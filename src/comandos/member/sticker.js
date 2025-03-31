@@ -22,14 +22,14 @@ module.exports = {
   }) => {
     if (!isImage && !isVideo) {
       throw new InvalidParameterError(
-        "👻 Krampus 👻 Debes marcar imagen/gif/vídeo o responder a una imagen/gif/vídeo"
+        "Debes marcar o responder lo que convertire a sticker\n> Krampus OM bot"
       );
     }
 
     const outputPath = path.resolve(TEMP_DIR, "output.webp");
 
     const stickerPackName = "Operacion Marshall";  // Nombre del paquete de stickers
-    const authorName = "POCHE bot\n by Krampus OM";  // Nombre del autor
+    const authorName = "Krampus bot\n\nby Krampus ༴༎om༎";  // Nombre del autor
 
     if (isImage) {
       const inputPath = await downloadImage(webMessage, "input");
