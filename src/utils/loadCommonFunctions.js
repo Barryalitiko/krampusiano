@@ -58,7 +58,25 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
       return { type: "video", path: videoPath };
     }
 
-    console.log("No se detectó imagen ni video.");
+    if (isAudio) {
+      console.log("Procesando audio...");
+      const audioPath = await downloadAudio(webMessage, "audio");
+      return { type: "audio", path: audioPath };
+    }
+
+    if (isSticker) {
+      console.log("Procesando sticker...");
+      const stickerPath = await downloadSticker(webMessage, "sticker");
+      return { type: "sticker", path: stickerPath };
+    }
+
+    if (isDocument) {
+      console.log("Procesando documento...");
+      const documentPath = await downloadDocument(webMessage, "document");
+      return { type: "document", path: documentPath };
+    }
+
+    console.log("No se detectó ningún tipo de medio.");
     return null;
   };
 
