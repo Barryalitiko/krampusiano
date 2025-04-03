@@ -70,7 +70,7 @@ module.exports = {
         }
       });
 
-      ffmpegProcess.on("error", (err) => {
+      ffmpegProcess.on("error", async (err) => {
         console.error("Error en el proceso de FFmpeg:", err);
         await sendErrorReply("Ocurrió un error inesperado durante el procesamiento.");
       });
