@@ -23,6 +23,7 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
   const isImage = baileysIs(webMessage, "image");
   const isVideo = baileysIs(webMessage, "video");
   const isSticker = baileysIs(webMessage, "sticker");
+  const isAudio = baileysIs(webMessage, "audio");
 
   // Funciones para descargar los archivos según el tipo
   const downloadImage = async (webMessage, fileName) => {
@@ -35,6 +36,10 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
 
   const downloadVideo = async (webMessage, fileName) => {
     return await download(webMessage, fileName, "video", "mp4");
+  };
+
+  const downloadAudio = async (webMessage, fileName) => {
+    return await download(webMessage, fileName, "audio", "mp3");
   };
 
   // Función para manejar los medios si se activa
@@ -271,6 +276,7 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
     isSticker,
     isVideo,
     isImage,
+    isVideo,
     prefix,
     remoteJid,
     replyJid,
