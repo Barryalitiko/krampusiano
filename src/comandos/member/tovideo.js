@@ -20,15 +20,23 @@ module.exports = {
     sendSuccessReact,
   }) => {
     if (!isReply || !isAudio) {
+      console.log("Error: No se respondió a un audio o el mensaje no contiene un audio.");
       throw new WarningError("Debes responder a un audio para convertirlo en video.");
     }
 
     await sendWaitReact();
+    console.log("Esperando... proceso en curso.");
 
     try {
+      console.log("Intentando descargar el audio...");
       const audioPath = await downloadAudio(webMessage, "input_audio.mp3");
+      console.log("Audio descargado con éxito en:", audioPath);
+
       const outputPath = path.join(__dirname, "output_video.mp4");
+      console.log("Ruta de salida del video:", outputPath);
+
       const text = "Krampus OM\nOperacion Marshall";
+      console.log("Texto a mostrar en el video:", text);
 
       const ffmpegArgs = [
         "-y",
@@ -45,19 +53,30 @@ module.exports = {
         outputPath
       ];
 
+      console.log("Comandos de FFmpeg:", ffmpegArgs);
+
       const ffmpegProcess = spawn("ffmpeg", ffmpegArgs);
 
       ffmpegProcess.on("close", async (code) => {
         if (code === 0) {
+          console.log("Conversión completada con éxito.");
           await sendSuccessReact();
           await sendVideoFromFile(outputPath, "Aquí tienes tu audio convertido en video.");
           fs.unlinkSync(audioPath);
           fs.unlinkSync(outputPath);
         } else {
+          console.log("Error en el proceso de FFmpeg, código de salida:", code);
           await sendErrorReply("Hubo un error al convertir el audio en video.");
         }
       });
+
+      ffmpegProcess.on("error", (err) => {
+        console.error("Error en el proceso de FFmpeg:", err);
+        await sendErrorReply("Ocurrió un error inesperado durante el procesamiento.");
+      });
+
     } catch (error) {
+      console.error("Error en el proceso de conversión:", error);
       await sendErrorReply("Ocurrió un error inesperado.");
     }
   },
