@@ -1,4 +1,4 @@
-const { downloadContentFromMessage } = require("baileys");
+const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
 const { PREFIX, COMMANDS_DIR, TEMP_DIR } = require("../krampus");
 const path = require("path");
 const fs = require("fs");
@@ -17,16 +17,23 @@ exports.question = (message) => {
 
 exports.extractDataFromMessage = (webMessage) => {
   const textMessage = webMessage.message?.conversation;
-  const extendedTextMessage = webMessage.message?.extendedTextMessage;
-  const extendedTextMessageText = extendedTextMessage?.text;
+  const extendedTextMessage = webMessage.message?.extendedTextMessage?.text;
   const imageTextMessage = webMessage.message?.imageMessage?.caption;
   const videoTextMessage = webMessage.message?.videoMessage?.caption;
+  const audioMessage = webMessage.message?.audioMessage;
+  const stickerMessage = webMessage.message?.stickerMessage;
+  const documentMessage = webMessage.message?.documentMessage;
+  const gifMessage = webMessage.message?.videoMessage?.gifPlayback ? webMessage.message?.videoMessage : null;
 
   const fullMessage =
     textMessage ||
-    extendedTextMessageText ||
+    extendedTextMessage ||
     imageTextMessage ||
-    videoTextMessage;
+    videoTextMessage ||
+    (audioMessage ? "[AUDIO]" : null) ||
+    (stickerMessage ? "[STICKER]" : null) ||
+    (documentMessage ? "[DOCUMENT]" : null) ||
+    (gifMessage ? "[GIF]" : null);
 
   if (!fullMessage) {
     return {
@@ -39,37 +46,39 @@ exports.extractDataFromMessage = (webMessage) => {
       remoteJid: null,
       replyJid: null,
       userJid: null,
+      messageType: null,
+      contextInfo: null, // Añadir contexto
     };
   }
 
-  const isReply =
-    !!extendedTextMessage && !!extendedTextMessage.contextInfo?.quotedMessage;
-
-  const replyJid =
-    !!extendedTextMessage && !!extendedTextMessage.contextInfo?.participant
-      ? extendedTextMessage.contextInfo.participant
-      : null;
-
-  const userJid = webMessage?.key?.participant?.replace(
-    /:[0-9][0-9]|:[0-9]/g,
-    ""
-  );
+  const isReply = !!webMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+  const replyJid = webMessage.message?.extendedTextMessage?.contextInfo?.participant || null;
+  const userJid = webMessage.key?.participant?.replace(/:[0-9]+/g, "");
 
   const [command, ...args] = fullMessage.split(" ");
-  const prefix = command.charAt(0);
-
+  const prefix = command?.charAt(0) || "";
   const commandWithoutPrefix = command.replace(new RegExp(`^[${PREFIX}]+`), "");
 
   return {
-    args: this.splitByCharacters(args.join(" "), ["\\", "|"]),
-    commandName: this.formatCommand(commandWithoutPrefix),
+    args: exports.splitByCharacters(args.join(" "), ["\\", "|"]),
+    commandName: exports.formatCommand(commandWithoutPrefix),
     fullArgs: args.join(" "),
     fullMessage,
     isReply,
     prefix,
-    remoteJid: webMessage?.key?.remoteJid,
+    remoteJid: webMessage.key?.remoteJid,
     replyJid,
     userJid,
+    messageType: audioMessage
+      ? "audio"
+      : stickerMessage
+      ? "sticker"
+      : documentMessage
+      ? "document"
+      : gifMessage
+      ? "gif"
+      : "text",
+    contextInfo: webMessage.message?.extendedTextMessage?.contextInfo, // Añadir contexto
   };
 };
 
@@ -84,8 +93,8 @@ exports.splitByCharacters = (str, characters) => {
 };
 
 exports.formatCommand = (text) => {
-  return this.onlyLettersAndNumbers(
-    this.removeAccentsAndSpecialCharacters(text.toLocaleLowerCase().trim())
+  return exports.onlyLettersAndNumbers(
+    exports.removeAccentsAndSpecialCharacters(text.toLocaleLowerCase().trim())
   );
 };
 
@@ -95,12 +104,11 @@ exports.onlyLettersAndNumbers = (text) => {
 
 exports.removeAccentsAndSpecialCharacters = (text) => {
   if (!text) return "";
-
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 };
 
 exports.baileysIs = (webMessage, context) => {
-  return !!this.getContent(webMessage, context);
+  return !!exports.getContent(webMessage, context);
 };
 
 exports.getContent = (webMessage, context) => {
@@ -113,7 +121,7 @@ exports.getContent = (webMessage, context) => {
 };
 
 exports.download = async (webMessage, fileName, context, extension) => {
-  const content = this.getContent(webMessage, context);
+  const content = exports.getContent(webMessage, context);
 
   if (!content) {
     return null;
@@ -135,18 +143,16 @@ exports.download = async (webMessage, fileName, context, extension) => {
 };
 
 exports.findCommandImport = (commandName) => {
-  const command = this.readCommandImports();
+  const command = exports.readCommandImports();
 
   let typeReturn = "";
   let targetCommandReturn = null;
 
   for (const [type, commands] of Object.entries(command)) {
-    if (!commands.length) {
-      continue;
-    }
+    if (!commands.length) continue;
 
     const targetCommand = commands.find((cmd) =>
-      cmd.commands.map((cmd) => this.formatCommand(cmd)).includes(commandName)
+      cmd.commands.map((cmd) => exports.formatCommand(cmd)).includes(commandName)
     );
 
     if (targetCommand) {
@@ -156,10 +162,7 @@ exports.findCommandImport = (commandName) => {
     }
   }
 
-  return {
-    type: typeReturn,
-    command: targetCommandReturn,
-  };
+  return { type: typeReturn, command: targetCommandReturn };
 };
 
 exports.readCommandImports = () => {
@@ -172,14 +175,17 @@ exports.readCommandImports = () => {
 
   for (const subdir of subdirectories) {
     const subdirectoryPath = path.join(COMMANDS_DIR, subdir);
-    const files = fs
-      .readdirSync(subdirectoryPath)
-      .filter(
-        (file) =>
-          !file.startsWith("_") &&
-          (file.endsWith(".js") || file.endsWith(".ts"))
-      )
-      .map((file) => require(path.join(subdirectoryPath, file)));
+    const files = [];
+
+    fs.readdirSync(subdirectoryPath)
+      .filter((file) => !file.startsWith("_") && (file.endsWith(".js") || file.endsWith(".ts")))
+      .forEach((file) => {
+        try {
+          files.push(require(path.join(subdirectoryPath, file)));
+        } catch (error) {
+          console.error(`Error al importar ${file}:`, error);
+        }
+      });
 
     commandImports[subdir] = files;
   }
@@ -188,40 +194,29 @@ exports.readCommandImports = () => {
 };
 
 const onlyNumbers = (text) => {
-  if (typeof text !== "string") return ""; // Evita errores si text es undefined o no es string
+  if (typeof text !== "string") return "";
   return text.replace(/[^0-9]/g, "");
 };
 
 exports.onlyNumbers = onlyNumbers;
 
 exports.toUserJid = (number) => {
-  if (!number) return ""; // Evita pasar undefined o null
+  if (!number) return "";
   return `${onlyNumbers(number)}@s.whatsapp.net`;
 };
 
-exports.onlyNumbers = onlyNumbers;
-
-exports.toUserJid = (number) => `${onlyNumbers(number)}@s.whatsapp.net`;
-
-exports.getBuffer = (url, options) => {
-  return new Promise((resolve, reject) => {
-    axios({
-      method: "get",
-      url,
-      headers: {
-        DNT: 1,
-        "Upgrade-Insecure-Request": 1,
-        range: "bytes=0-",
-      },
-      ...options,
+exports.getBuffer = async (url, options = {}) => {
+  try {
+    const res = await axios.get(url, {
+      headers: { DNT: 1, "Upgrade-Insecure-Request": 1 },
       responseType: "arraybuffer",
-      proxy: options?.proxy || false,
-    })
-      .then((res) => {
-        resolve(res.data);
-      })
-      .catch(reject);
-  });
+      ...options,
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Error al obtener buffer:", error.message);
+    return null;
+  }
 };
 
 function getRandomNumber(min, max) {
@@ -232,10 +227,40 @@ exports.getRandomNumber = getRandomNumber;
 
 exports.getRandomName = (extension) => {
   const fileName = getRandomNumber(0, 999999);
+  return extension ? `${fileName}.${extension}` : fileName.toString();
+};
 
-  if (!extension) {
-    return fileName.toString();
+exports.handleCommandResponse = async (response, sendReply) => {
+  if (typeof response === "object") {
+    const message = {
+      text: response.text,
+      contextInfo: response.contextInfo,
+    };
+    await exports.sendQuotedMessage(sendReply, message);
+  } else {
+    await sendReply(response);
   }
+};
 
-  return `${fileName}.${extension}`;
+exports.sendQuotedMessage = async (remoteJid, message) => {
+const contextInfo = message.contextInfo;
+if (contextInfo) {
+const quotedMessage = contextInfo.quotedMessage;
+const quotedParticipant = contextInfo.quotedParticipant;
+const quotedExternalParticipant = contextInfo.quotedExternalParticipant;
+const quotedMessageUrl = contextInfo.quotedMessageUrl;
+
+const messageWithQuote = {
+  text: message.text,
+  contextInfo: {
+    quotedMessage,
+    quotedParticipant,
+    quotedExternalParticipant,
+    quotedMessageUrl,
+  },
+};
+await socket.sendMessage(remoteJid, messageWithQuote);
+} else {
+await socket.sendMessage(remoteJid, message);
+}
 };
