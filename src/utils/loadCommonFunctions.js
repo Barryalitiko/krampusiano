@@ -287,6 +287,7 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
     downloadImage,
     downloadSticker,
     downloadVideo,
+    downloadAudio,
     fullArgs,
     fullMessage,
     handleMediaMessage,
