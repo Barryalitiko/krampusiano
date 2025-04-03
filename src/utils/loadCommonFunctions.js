@@ -130,6 +130,10 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
     return await sendReact("🎵");
   };
 
+const sendBasuraReact = async () => {
+    return await sendReact("🗑️");
+  };
+  
   const sendWarningReply = async (text) => {
     await sendWarningReact();
     return await sendReply(`⚠️ Advertencia! ${text}`);
@@ -365,6 +369,7 @@ const sendLinkWithDelay = async (socket, remoteJid, webMessage, link, text) => {
     sendStickerFromFile,
     sendReplyWithLink,
     sendStickerFromURL,
+    sendBasuraReact,
     sendMessage,
     sendVideoFromFile,
     sendReplyWithButton,
