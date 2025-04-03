@@ -24,6 +24,7 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
   const isVideo = baileysIs(webMessage, "video");
   const isSticker = baileysIs(webMessage, "sticker");
   const isAudio = baileysIs(webMessage, "audio");
+  const isDocument = baileysIs(webMessage, "document");
 
   // Funciones para descargar los archivos según el tipo
   const downloadImage = async (webMessage, fileName) => {
@@ -40,6 +41,10 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
 
   const downloadAudio = async (webMessage, fileName) => {
     return await download(webMessage, fileName, "audio", "mp3");
+  };
+
+  const downloadDocument = async (webMessage, fileName) => {
+    return await download(webMessage, fileName, "document", "pdf");
   };
 
   // Función para manejar los medios si se activa
@@ -89,7 +94,7 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
     }
 
     return await socket.sendMessage(remoteJid, {
-      text: `${BOT_EMOJI} ${text}`,
+      text: `${text}`,
       ...optionalParams,
     });
   };
@@ -98,7 +103,7 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
   const sendReply = async (text) => {
     return await socket.sendMessage(
       remoteJid,
-      { text: `${BOT_EMOJI} ${text}` },
+      { text: `${text}` },
       { quoted: webMessage }
     );
   };
@@ -116,21 +121,9 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
   const sendSuccessReact = async () => {
     return await sendReact("✅");
   };
-  
-    const sendPuzzleReact = async () => {
-    return await sendReact("🧩");
-  };
-  
-      const sendLinkReact = async () => {
-    return await sendReact("🔗");
-  };
-  
-      const sendBasuraReact = async () => {
-    return await sendReact("🗑️");
-  };
 
-    const sendWelcomeReact = async () => {
-    return await sendReact("🫂");
+  const sendPuzzleReact = async () => {
+    return await sendReact("🧩");
   };
 
   const sendMusicReact = async () => {
@@ -198,13 +191,25 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
   };
 
   const sendStickerFromFile = async (file) => {
-    return await socket.sendMessage(
-      remoteJid,
-      {
-        sticker: fs.readFileSync(file),
-      },
-      { quoted: webMessage }
-    );
+    if (!fs.existsSync(file)) {
+      throw new Error(`El archivo ${file} no existe`);
+    }
+
+    const fileType = file.split('.').pop();
+    if (fileType !== 'png' && fileType !== 'webp') {
+      throw new Error(`El archivo ${file} no es un PNG o WEBP`);
+    }
+
+    const fileSize = fs.statSync(file).size;
+    if (fileSize > 100 * 1024) {
+      throw new Error(`El archivo ${file} supera el límite de tamaño permitido`);
+    }
+
+    return await socket.sendMessage(remoteJid, {
+      sticker: fs.readFileSync(file),
+    }, {
+      quoted: webMessage
+    });
   };
 
   const sendStickerFromURL = async (url) => {
@@ -213,28 +218,30 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
       {
         sticker: { url },
       },
-      { url, quoted: webMessage }
+      { quoted: webMessage }
     );
   };
 
-  const sendMessage = async ({ messageType, caption = '', mimetype = '', url = '' }) => {
-    try {
-      let messageContent = {};
+  const sendMessage = async ({ messageType, caption = '', mimetype = '', url = '', text = '' }) => {
+  try {
+    let messageContent = {};
 
-      if (messageType === 'audio') {
-        messageContent = { audio: { url }, mimetype };
-      } else if (messageType === 'video') {
-        messageContent = { video: { url }, caption, mimetype };
-      } else if (messageType === 'image') {
-        messageContent = { image: { url }, caption, mimetype };
-      }
-
-      await socket.sendMessage(remoteJid, messageContent, { quoted: webMessage });
-      console.log(`${messageType} enviado con éxito.`);
-    } catch (error) {
-      console.error(`Error al enviar el mensaje de tipo ${messageType}:`, error);
+    if (messageType === 'audio') {
+      messageContent = { audio: { url }, mimetype };
+    } else if (messageType === 'video') {
+      messageContent = { video: { url }, caption, mimetype };
+    } else if (messageType === 'image') {
+      messageContent = { image: { url }, caption, mimetype };
+    } else if (messageType === 'text') {
+      messageContent = { text: `${text}`, url };  // Aquí enviamos el enlace directamente
     }
-  };
+
+    await socket.sendMessage(remoteJid, messageContent, { quoted: webMessage });
+    console.log(`${messageType} enviado con éxito.`);
+  } catch (error) {
+    console.error(`Error al enviar el mensaje de tipo ${messageType}:`, error);
+  }
+};
 
   const sendVideoFromFile = async (filePath, caption = '') => {
     console.log(`Enviando video desde archivo: ${filePath}`);
@@ -253,49 +260,84 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
       remoteJid,
       {
         image: fs.readFileSync(file),
-        caption: caption ? `${BOT_EMOJI} ${caption}` : "",
+        caption: caption ? `${caption}` : "",
+      },
+      { quoted: webMessage }
+    );
+  };
+
+  const sendImageFromURL = async (url, caption = "") => {
+    return await socket.sendMessage(
+      remoteJid,
+      {
+        image: { url },
+        caption: caption ? `${caption}` : "",
+      },
+      { url, quoted: webMessage }
+    );
+  };
+
+  const sendReplyWithButton = async (text, buttons) => {
+  const buttonMessage = {
+    text: text,  // El texto del mensaje
+    footer: "",   // Pie de página opcional
+    buttons: buttons, // Los botones
+    headerType: 1,  // Tipo de cabecera, puede ser 1 (solo texto) o 2 (con botones)
+  };
+
+  // Enviar el mensaje con los botones
+  return await socket.sendMessage(remoteJid, buttonMessage, { quoted: webMessage });
+};
+
+  const sendReplyWithLink = async (text, link) => {
+    return await socket.sendMessage(
+      remoteJid,
+      {
+        text: `${text}`,
+        url: link,
       },
       { quoted: webMessage }
     );
   };
   
-    const sendImageFromURL = async (url, caption = "") => {
+  const sendQuotedMessage = async (text, contextInfo) => {
+return await socket.sendMessage(remoteJid, { text, contextInfo }, { quoted: webMessage });
+};
+
+const sendLinkWithDelay = async (socket, remoteJid, webMessage, link, text) => {
+  try {
+    // Enviar el enlace con un pequeño retraso para permitir la previsualización
+    await new Promise(resolve => setTimeout(resolve, 500));  // Espera de 500ms
     return await socket.sendMessage(
       remoteJid,
       {
-        image: { url },
-        caption: caption ? `${BOT_EMOJI} ${caption}` : "",
+        text: `${text}\n${link}`,
       },
-      { url, quoted: webMessage }
+      { quoted: webMessage }
     );
-  };
-  
-  const sendReplyWithButton = async (text, buttons) => {
-  const buttonMessage = {
-    text,
-    footer: "",
-    buttons: buttons,
-    headerType: 1,
-  };
-
-  return await socket.sendMessage(remoteJid, buttonMessage, { quoted: webMessage });
+  } catch (error) {
+    console.error("Error al enviar el enlace con retraso:", error);
+  }
 };
 
   return {
     args,
+    sendQuotedMessage,
     commandName,
     downloadImage,
     downloadSticker,
     downloadVideo,
     downloadAudio,
+    downloadDocument,
     fullArgs,
     fullMessage,
     handleMediaMessage,
     isReply,
     isSticker,
     isVideo,
+    isAudio,
     isImage,
-    isVideo,
+    isDocument,
     prefix,
     remoteJid,
     replyJid,
@@ -317,15 +359,14 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
     sendSuccessReply,
     sendWaitReply,
     sendErrorReply,
+    sendLinkWithDelay,
     sendAudioFromURL,
     sendVideoFromURL,
     sendStickerFromFile,
+    sendReplyWithLink,
     sendStickerFromURL,
     sendMessage,
-    sendBasuraReact,
-    sendWelcomeReact,
     sendVideoFromFile,
-    sendLinkReact,
     sendReplyWithButton,
   };
 };
