@@ -204,11 +204,6 @@ const sendBasuraReact = async () => {
       throw new Error(`El archivo ${file} no es un PNG o WEBP`);
     }
 
-    const fileSize = fs.statSync(file).size;
-    if (fileSize > 100 * 1024) {
-      throw new Error(`El archivo ${file} supera el límite de tamaño permitido`);
-    }
-
     return await socket.sendMessage(remoteJid, {
       sticker: fs.readFileSync(file),
     }, {
