@@ -139,6 +139,11 @@ const sendBasuraReact = async () => {
     return await sendReply(`⚠️ Advertencia! ${text}`);
   };
 
+        const sendBasuraReact = async () => {
+    return await sendReact("🗑️");
+  };
+
+
   const sendWarningReact = async () => {
     return await sendReact("⚠️");
   };
