@@ -155,6 +155,10 @@ const sendBasuraReact = async () => {
     return await sendReact("❌");
   };
 
+const sendLinkReact = async () => {
+    return await sendReact("🔗");
+  };
+  
   const sendSuccessReply = async (text) => {
     await sendSuccessReact();
     return await sendReply(`👻 ${text}`);
@@ -359,6 +363,7 @@ const sendLinkWithDelay = async (socket, remoteJid, webMessage, link, text) => {
     sendWarningReact,
     sendWaitReact,
     sendErrorReact,
+    sendLinkReact,
     sendSuccessReply,
     sendWaitReply,
     sendErrorReply,
