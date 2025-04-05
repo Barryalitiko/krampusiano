@@ -143,6 +143,10 @@ const sendBasuraReact = async () => {
     return await sendReact("⚠️");
   };
 
+  const sendWelcomeReact = async () => {
+    return await sendReact("🫂");
+  };
+  
   const sendWaitReact = async () => {
     return await sendReact("⏳");
   };
@@ -363,6 +367,7 @@ const sendLinkWithDelay = async (socket, remoteJid, webMessage, link, text) => {
     sendVideoFromURL,
     sendStickerFromFile,
     sendReplyWithLink,
+    sendWelcomeReact,
     sendStickerFromURL,
     sendBasuraReact,
     sendMessage,
