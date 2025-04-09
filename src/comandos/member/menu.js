@@ -4,11 +4,12 @@ const path = require("path");
 
 module.exports = {
   name: "menu",
-  description: "Muestra el menú de comandos.",
+  description: "Muestra el menú de comandos con un estilo especial.",
   commands: ["menu", "help", "ayuda"],
   usage: `${PREFIX}menu`,
   handle: async ({ socket, remoteJid, sendReply }) => {
-    const menuMessage = `»»————- - ————-««
+    try {
+      const menuMessage = `»»————- - ————-««
 > 𝗞𝗿𝗮𝗺𝗽𝘂𝘀 𝗢𝗠 𝗯𝗼𝘁
 usa ${PREFIX}menu2 para ver mas detalles
 ══════════.K.═ 
@@ -97,7 +98,6 @@ COMANDOS:
 ⌠⅏⌡➟ ${PREFIX}tokischa
 ⌠⅏⌡➟ ${PREFIX}banquera
 
-
 ══════════.K.═
 *POKEMON*
 
@@ -108,17 +108,34 @@ COMANDOS:
 ⌠⅏⌡➟ ${PREFIX}evolucionar
 ⌠⅏⌡➟ ${PREFIX}legendario
 
-
 »»————- - ————-««
 > Operacion Marshall
 »»————- - ————-««`;
 
-    await socket.sendMessage(remoteJid, {
-      video: fs.readFileSync("assets/sx/menu.mp4"),
-      caption: menuMessage,
-      gifPlayback: true,
-    });
+      const videoPath = "assets/sx/menu.mp4";
+      const videoBuffer = fs.readFileSync(videoPath);
+
+      const fakeQuoted = {
+        key: {
+          remoteJid: remoteJid,
+          fromMe: false,
+          id: "FAKE-QUOTE-MENU-ID",
+          participant: "0@s.whatsapp.net",
+        },
+        message: {
+          conversation: "Krampus OM\n Menú de ayuda disponible",
+        },
+      };
+
+      await socket.sendMessage(remoteJid, {
+        video: videoBuffer,
+        caption: menuMessage,
+        gifPlayback: true,
+      }, { quoted: fakeQuoted });
+
+    } catch (err) {
+      console.error("❌ Error al enviar el menú:", err);
+      sendReply("⚠️ Ocurrió un error al enviar el menú.");
+    }
   },
 };
-
-
