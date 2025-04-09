@@ -20,7 +20,7 @@ module.exports = {
           participant: "0@s.whatsapp.net",
         },
         message: {
-          conversation: "Krampus OM\n Operacion Marshall",
+          conversation: "Krampus OM",
         },
       };
 
