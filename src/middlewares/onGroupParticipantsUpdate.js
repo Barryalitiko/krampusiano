@@ -1,5 +1,6 @@
 const { getProfileImageData } = require("../services/baileys");
 const fs = require("fs");
+const path = require("path");
 const { onlyNumbers } = require("../utils");
 const { isActiveWelcomeGroup, getWelcomeMode, isActiveGoodbyeGroup } = require("../utils/database");
 const { warningLog } = require("../utils/logger");
@@ -24,19 +25,29 @@ exports.onGroupParticipantsUpdate = async ({ groupParticipantsUpdate, socket }) 
 
                 const welcomeMessage = `¡𝗕𝗶𝗲𝗻𝘃𝗲𝗻𝗶𝗱@ 𝗮𝗹 𝗴𝗿𝘂𝗽𝗼! @${userJid ? onlyNumbers(userJid) : ''}\n\nPresentate ᶜᵒⁿ 𝐟𝐨𝐭𝐨 y 𝐧𝐨𝐦𝐛𝐫𝐞\n> Bot by Krampus OM Oᴘᴇʀᴀᴄɪᴏɴ Mᴀʀsʜᴀʟʟ ༴༎𝙾𝙼༎\n> https://www.instagram.com/p/DGjMug8shLI/?igsh=MXMzaGN0NjJ1MDkxMw==`;
 
+                const fakeQuoted = {
+                    key: {
+                        remoteJid: remoteJid,
+                        fromMe: false,
+                        id: "FAKE-WELCOME",
+                        participant: "0@s.whatsapp.net",
+                    },
+                    message: {
+                        conversation: "✨ Bienvenid@ ✨",
+                    },
+                };
+
                 if (welcomeMode === "2") {
-                    // Si el modo es 2, se envía con foto
                     await socket.sendMessage(remoteJid, {
                         image: buffer,
                         caption: welcomeMessage,
                         mentions: [userJid],
-                    });
+                    }, { quoted: fakeQuoted });
 
-                    if (!profileImage.includes("default-user")) {
-                        fs.unlinkSync(profileImage); // Eliminamos la imagen de perfil descargada
+                    if (profileImage && !profileImage.includes("default-user")) {
+                        fs.unlinkSync(profileImage); // Elimina la imagen descargada
                     }
                 } else {
-                    // Si el modo es 1, solo enviamos texto
                     await socket.sendMessage(remoteJid, {
                         text: welcomeMessage,
                         mentions: [userJid],
@@ -54,7 +65,6 @@ exports.onGroupParticipantsUpdate = async ({ groupParticipantsUpdate, socket }) 
             try {
                 const goodbyeMessage = `> ¿Que esta pasando aqui?\nDe tanto llorar @${userJid ? onlyNumbers(userJid) : ''} salio del grupo 💔😞`;
 
-                // Solo enviamos el mensaje de texto, sin imágenes
                 await socket.sendMessage(remoteJid, {
                     text: goodbyeMessage,
                     mentions: [userJid],
