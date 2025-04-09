@@ -8,7 +8,7 @@ module.exports = {
   name: "audiovideo",
   description: "Convierte un audio en un video con fondo negro y texto",
   commands: ["audiovideo", "a2v"],
-  usage: `${PREFIX}audiovideo (responder a un audio)`,
+  usage: `${PREFIX}audiovideo (responder a un audio) [texto opcional]`,
   handle: async ({
     webMessage,
     isReply,
@@ -18,6 +18,7 @@ module.exports = {
     sendErrorReply,
     sendWaitReact,
     sendSuccessReact,
+    args, // <--- Asegúrate de que tu sistema de comandos te pase los args
   }) => {
     if (!isReply || !isAudio) {
       console.log("Error: No se respondió a un audio o el mensaje no contiene un audio.");
@@ -35,7 +36,14 @@ module.exports = {
       const outputPath = path.join(__dirname, "output_video.mp4");
       console.log("Ruta de salida del video:", outputPath);
 
-      const text = "Krampus OM\nOperacion Marshall";
+      // Texto base
+      let text = "Krampus OM\nOperacion Marshall";
+      // Si hay texto adicional del usuario, se añade
+      if (args.length > 0) {
+        const userText = args.join(" ").replace(/'/g, ""); // eliminar comillas para evitar errores
+        text += `\n${userText}`;
+      }
+
       console.log("Texto a mostrar en el video:", text);
 
       const ffmpegArgs = [
@@ -61,7 +69,7 @@ module.exports = {
         if (code === 0) {
           console.log("Conversión completada con éxito.");
           await sendSuccessReact();
-          await sendVideoFromFile(outputPath, "Aquí tienes tu audio convertido en video.");
+          await sendVideoFromFile(outputPath, "Audio a video\n> Krampus OM");
           fs.unlinkSync(audioPath);
           fs.unlinkSync(outputPath);
         } else {
