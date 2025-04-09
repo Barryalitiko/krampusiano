@@ -20,7 +20,7 @@ module.exports = {
           participant: "0@s.whatsapp.net",
         },
         message: {
-          conversation: "Krampus OM bot ,
+          conversation: "Krampus OM bot" ,
         },
       };
 
