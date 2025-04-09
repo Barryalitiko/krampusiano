@@ -46,6 +46,7 @@ COMANDOS:
 ⌠⅏⌡➟ ${PREFIX}ping
 ⌠⅏⌡➟ ${PREFIX}pfp/perfil
 ⌠⅏⌡➟ ${PREFIX}fotogrupo
+⌠⅏⌡➟ ${PREFIX}audiovideo/a2v 
 ═.K.═════════
 
 𝗖𝗢𝗠𝗔𝗡𝗗𝗢𝗦 𝗦𝗫
