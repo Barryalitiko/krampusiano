@@ -123,7 +123,7 @@ COMANDOS:
           participant: "0@s.whatsapp.net",
         },
         message: {
-          conversation: "Krampus OM\n Menú de ayuda disponible",
+          conversation: "Krampus OM\n OPERACION MARSHALL",
         },
       };
 
