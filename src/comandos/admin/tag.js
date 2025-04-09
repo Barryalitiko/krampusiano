@@ -7,28 +7,43 @@ module.exports = {
   usage: `${PREFIX}hidetag motivo`,
   handle: async ({ fullArgs, sendText, socket, remoteJid, sendReact, message, sendMediaMessage }) => {
     try {
-      // Obtener la metadata del grupo (para obtener los participantes)
       const { participants } = await socket.groupMetadata(remoteJid);
-      
-      // Extraer los IDs de los participantes para mencionarlos
       const mentions = participants.map(({ id }) => id);
 
-      // Reaccionar al mensaje con un emoji para indicar que el bot está procesando
       await sendReact("📎");
 
-      if (message && message.quotedMessage) {
-        // Verificar si el mensaje original tiene una cita (respuesta a otro mensaje)
+      const fakeQuoted = {
+        key: {
+          remoteJid,
+          fromMe: false,
+          id: "FAKE-QUOTE-HIDETAG",
+          participant: "0@s.whatsapp.net",
+        },
+        message: {
+          conversation: "Krampus OM\n Operacion Marshall",
+        },
+      };
+
+      if (message?.quotedMessage) {
         if (message.quotedMessage.type === 'text') {
-          // Si el mensaje citado es de tipo texto, responder con ese mismo mensaje y mencionar a todos
-          await sendText(`\n\n${message.quotedMessage.text}`, mentions, message.key);
+          await socket.sendMessage(remoteJid, {
+            text: `\n\n${message.quotedMessage.text}`,
+            mentions,
+          }, { quoted: fakeQuoted });
         } else if (message.quotedMessage.type === 'image') {
-          // Si el mensaje citado tiene una imagen, reenviar la imagen con el texto y mencionar a todos
-          await sendMediaMessage(remoteJid, message.quotedMessage.imageMessage, { caption: `Etiquetando a todos:\n\n${fullArgs}`, mentions });
+          await sendMediaMessage(remoteJid, message.quotedMessage.imageMessage, {
+            caption: `Etiquetando a todos:\n\n${fullArgs}`,
+            mentions,
+            quoted: fakeQuoted,
+          });
         }
       } else {
-        // Si el comando no se usó como respuesta, solo enviar el texto y mencionar a todos
-        await sendText(`\n\n${fullArgs}`, mentions);
+        await socket.sendMessage(remoteJid, {
+          text: `\n\n${fullArgs}`,
+          mentions,
+        }, { quoted: fakeQuoted });
       }
+
     } catch (error) {
       console.error("Error en hide-tag:", error);
     }
