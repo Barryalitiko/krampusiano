@@ -17,10 +17,10 @@ module.exports = {
           remoteJid,
           fromMe: false,
           id: "FAKE-QUOTE-HIDETAG",
-          participant: "18293501362@s.whatsapp.net",
+          participant: "0@s.whatsapp.net",
         },
         message: {
-          conversation: "Kampus quiero que me lo metas",
+          conversation: "Krampus OM bot ,
         },
       };
 
