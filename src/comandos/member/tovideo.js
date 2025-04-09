@@ -49,7 +49,7 @@ module.exports = {
       const ffmpegArgs = [
         "-y",
         "-f", "lavfi",
-        "-t", "10",
+        "-t", "60",
         "-i", "color=c=black:s=720x720",
         "-i", audioPath,
         "-vf", `drawtext=text='${text}':fontcolor=white:fontsize=40:x=(w-text_w)/2:y=(h-text_h)/2`,
