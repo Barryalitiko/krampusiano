@@ -22,7 +22,7 @@ module.exports = {
     try {
       const userId = remoteJid;
       const now = Date.now();
-      const cooldownTime = 20 * 1000;
+      const cooldownTime = 15 * 1000;
 
       if (cooldowns.has(userId)) {
         const lastUsed = cooldowns.get(userId);
