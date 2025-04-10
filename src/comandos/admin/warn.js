@@ -21,10 +21,10 @@ module.exports = {
 
     switch (command) {
       case 'list':
-        await handleWarnList(remoteJid, sendReply, socket);
+        await handleWarnList(remoteJid, sendReply);
         break;
       case 'reset':
-        await handleWarnReset(remoteJid, args, sendReply, mentions, webMessage);
+        await handleWarnReset(remoteJid, args, sendReply, mentions);
         break;
       case 'clear':
         await handleWarnClear(remoteJid, sendReply);
@@ -38,74 +38,50 @@ module.exports = {
 };
 
 async function handleWarn(remoteJid, sendReply, socket, webMessage, mentions) {
-  let userId = mentions[0];
-
-  if (!userId && webMessage?.message?.extendedTextMessage?.contextInfo?.participant) {
-    userId = webMessage.message.extendedTextMessage.contextInfo.participant;
-  }
-
-  if (!userId) {
-    sendReply('Por favor, menciona al usuario o responde a su mensaje para advertirlo.');
+  if (!mentions.length) {
+    sendReply('Por favor, menciona al usuario que deseas advertir.');
     return;
   }
 
-  // Obtener el nombre del usuario
-  const participant = await socket.groupMetadata(remoteJid);
-  const user = participant.participants.find(p => p.id === userId);
-  const userName = user?.name || userId.split('@')[0]; // Usar nombre, si está disponible, o el ID
-
+  const userId = mentions[0];
   if (!warnings[remoteJid]) warnings[remoteJid] = {};
   warnings[remoteJid][userId] = (warnings[remoteJid][userId] || 0) + 1;
 
   const userWarnings = warnings[remoteJid][userId];
-  sendReply(`⚠️ ${userName} ha recibido una advertencia. Advertencias acumuladas: ${userWarnings}/3.`);
+  sendReply(`⚠️ @${userId.split('@')[0]} ha recibido una advertencia. Advertencias acumuladas: ${userWarnings}/3.`);
 
   if (userWarnings >= 3) {
-    sendReply(`🚨 ${userName} ha sido expulsado por acumular 3 advertencias.`);
+    sendReply(`🚨 @${userId.split('@')[0]} ha sido expulsado por acumular 3 advertencias.`);
     await socket.groupParticipantsUpdate(remoteJid, [userId], 'remove');
     delete warnings[remoteJid][userId]; // Limpiar advertencias tras la expulsión
   }
 }
 
-async function handleWarnList(remoteJid, sendReply, socket) {
+async function handleWarnList(remoteJid, sendReply) {
   if (!warnings[remoteJid] || Object.keys(warnings[remoteJid]).length === 0) {
     sendReply('No hay usuarios con advertencias en este grupo.');
     return;
   }
 
-  const participant = await socket.groupMetadata(remoteJid);
   const warnList = Object.entries(warnings[remoteJid])
-    .map(([userId, count], index) => {
-      const user = participant.participants.find(p => p.id === userId);
-      const userName = user?.name || userId.split('@')[0]; // Nombre si disponible, o ID
-      return `${index + 1}. ${userName} - ${count} advertencias`;
-    })
+    .map(([userId, count], index) => `${index + 1}. @${userId.split('@')[0]} - ${count} advertencias`)
     .join('\n');
 
   sendReply(`Lista de usuarios advertidos:\n${warnList}`);
 }
 
-async function handleWarnReset(remoteJid, args, sendReply, mentions, webMessage) {
-  let userId = mentions[0];
-
-  if (!userId && webMessage?.message?.extendedTextMessage?.contextInfo?.participant) {
-    userId = webMessage.message.extendedTextMessage.contextInfo.participant;
-  }
-
-  if (!userId) {
-    sendReply('Por favor, menciona o responde al usuario cuyas advertencias deseas restablecer.');
+async function handleWarnReset(remoteJid, args, sendReply, mentions) {
+  if (!mentions.length) {
+    sendReply('Por favor, menciona al usuario cuyas advertencias deseas restablecer.');
     return;
   }
 
-  const participant = await socket.groupMetadata(remoteJid);
-  const user = participant.participants.find(p => p.id === userId);
-  const userName = user?.name || userId.split('@')[0]; // Nombre si disponible, o ID
-
+  const userId = mentions[0];
   if (warnings[remoteJid] && warnings[remoteJid][userId]) {
     delete warnings[remoteJid][userId];
-    sendReply(`✅ Advertencias de ${userName} restablecidas.`);
+    sendReply(`✅ Advertencias de @${userId.split('@')[0]} restablecidas.`);
   } else {
-    sendReply(`ℹ️ ${userName} no tiene advertencias registradas.`);
+    sendReply(`ℹ️ @${userId.split('@')[0]} no tiene advertencias registradas.`);
   }
 }
 
