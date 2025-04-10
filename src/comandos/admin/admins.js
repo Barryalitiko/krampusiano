@@ -4,34 +4,35 @@ module.exports = {
   name: "admin",
   description: "Promueve o degrada a un administrador en el grupo.",
   commands: ["promote", "demote"],
-  usage: `${PREFIX}promote @usuario\n${PREFIX}demote @usuario`,
+  usage: `${PREFIX}promote @usuario o responde a un mensaje\n${PREFIX}demote @usuario o responde a un mensaje`,
   handle: async ({ args, remoteJid, commandName, sendReply, socket, sendReact, message, sendMediaMessage }) => {
     if (!remoteJid.endsWith("@g.us")) {
       await sendReply("Este comando solo puede usarse en grupos.");
       return;
     }
 
-    if (args.length < 1) {
-      await sendReply(
-        `Uso incorrecto. Ejemplo:\n${PREFIX}promote @usuario\n${PREFIX}demote @usuario`
-      );
+    // Obtener ID del usuario mencionado o del mensaje respondido
+    let targetId;
+
+    if (args.length >= 1 && args[0].includes("@")) {
+      targetId = args[0].replace("@", "").replace(/\D/g, "") + "@s.whatsapp.net";
+    } else if (message?.quotedMessage && message?.quotedParticipant) {
+      targetId = message.quotedParticipant;
+    } else {
+      await sendReply(`Debes mencionar o responder al mensaje del usuario.\nEjemplo:\n${PREFIX}promote @usuario o responde al mensaje del usuario.`);
       return;
     }
 
-    const mentionedUser = args[0].replace("@", "").replace(/\D/g, "") + "@s.whatsapp.net";
-
     try {
       if (commandName === "promote") {
-        await socket.groupParticipantsUpdate(remoteJid, [mentionedUser], "promote");
+        await socket.groupParticipantsUpdate(remoteJid, [targetId], "promote");
         await sendReact("✅");
       } else if (commandName === "demote") {
-        await socket.groupParticipantsUpdate(remoteJid, [mentionedUser], "demote");
+        await socket.groupParticipantsUpdate(remoteJid, [targetId], "demote");
         await sendReact("❌");
       }
 
-      const { participants } = await socket.groupMetadata(remoteJid);
-      const mentions = participants.map(({ id }) => id);
-
+      // Mensaje falso para previsualización
       const fakeQuoted = {
         key: {
           remoteJid,
@@ -44,22 +45,24 @@ module.exports = {
         },
       };
 
-      // Previsualización del mensaje según la acción
+      const username = targetId.split("@")[0];
       const actionText = commandName === "promote"
-        ? `@${args[0]} ahora es administrador.`
-        : `@${args[0]} ya no es administrador.`;
+        ? `@${username} ahora es administrador.`
+        : `@${username} ya no es administrador.`;
 
-      // Si hay un mensaje citado con contenido visual, se envía como media
+      const mentions = [targetId];
+
       if (message?.quotedMessage) {
-        if (message.quotedMessage.type === "image") {
+        if (message.quotedMessage.imageMessage) {
           await sendMediaMessage(remoteJid, message.quotedMessage.imageMessage, {
             caption: actionText,
             mentions,
             quoted: fakeQuoted,
           });
-        } else if (message.quotedMessage.type === "text") {
+        } else if (message.quotedMessage.conversation || message.quotedMessage.extendedTextMessage) {
+          const quotedText = message.quotedMessage.conversation || message.quotedMessage.extendedTextMessage?.text;
           await socket.sendMessage(remoteJid, {
-            text: `${actionText}\n\n"${message.quotedMessage.text}"`,
+            text: `${actionText}\n\n"${quotedText}"`,
             mentions,
           }, { quoted: fakeQuoted });
         } else {
@@ -69,7 +72,6 @@ module.exports = {
           }, { quoted: fakeQuoted });
         }
       } else {
-        // Si no se citó nada, solo enviar el texto
         await socket.sendMessage(remoteJid, {
           text: actionText,
           mentions,
