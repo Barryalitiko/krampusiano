@@ -22,7 +22,7 @@ module.exports = {
     try {
       const userId = remoteJid;
       const now = Date.now();
-      const cooldownTime = 15 * 1000;
+      const cooldownTime = 20 * 1000;
 
       if (cooldowns.has(userId)) {
         const lastUsed = cooldowns.get(userId);
@@ -61,22 +61,46 @@ module.exports = {
 📺 Canal: ${videoAuthor}
 👀 Visualizaciones: ${videoViews}
 
-> Bot by Krampus OM Oᴘᴇʀᴀᴄɪᴏɴ Mᴀʀsʜᴀʟʟ ༴༎𝙾𝙼༎`;
+> SOKY bot Oᴘᴇʀᴀᴄɪᴏɴ Mᴀʀsʜᴀʟʟ ༴༎𝙾𝙼༎`;
 
-      await sendReply(message, { quoted: webMessage });
+      const firstMessage = await sendReply(message, { quoted: webMessage });
+
+
+      setTimeout(async () => {
+        await socket.sendMessage(remoteJid, {
+          delete: {
+            remoteJid: remoteJid,
+            fromMe: true, 
+            id: firstMessage.key.id, 
+          },
+        });
+        console.log(`Primer mensaje eliminado: ${firstMessage.key.id}`);
+      }, 15000); 
 
       const musicPath = await downloadMusic(videoUrl);
       console.log(`Música descargada correctamente: ${musicPath}`);
 
       await sendMusicReact("🎵");
-      await sendMessage({
-        messageType: "audio",
-        url: musicPath,
-        mimetype: "audio/mp4",
-        caption: `🎶 Aquí tienes la música: ${videoTitle}`,
-      });
 
-      // Eliminar el archivo de inmediato después de enviarlo
+
+      await socket.sendMessage(remoteJid, {
+        audio: { url: musicPath },
+        mimetype: "audio/mp4",
+        ptt: true, 
+        caption: `🎶 ${videoTitle}`,
+        contextInfo: {
+          externalAdReply: {
+            title: videoTitle, // Nombre de la canción
+            body: "KRAMPUS ༴༎𝙾𝙼༎",
+            mediaType: 2,
+            thumbnailUrl: "https://i.imgur.com/KaSl1I9_d.webp?maxwidth=760&fidelity=grand", // miniatura del canal
+            renderLargerThumbnail: true,
+            showAdAttribution: true,
+            sourceUrl: "Oᴘᴇʀᴀᴄɪᴏɴ Mᴀʀsʜᴀʟʟ", // link del canal (ficticio o real)
+          },
+        },
+      }, { quoted: webMessage });
+
       fs.unlinkSync(musicPath);
       console.log(`Archivo de música eliminado: ${musicPath}`);
 
