@@ -33,6 +33,8 @@ COMANDOS:
 ⌠⅏⌡➟ ${PREFIX}reglas
 ⌠⅏⌡➟ ${PREFIX}ban
 ⌠⅏⌡➟ ${PREFIX}advertencia/adv
+⌠⅏⌡➟ ${PREFIX}aviso
+
 ══════════.K.═
 𝗠𝗜𝗘𝗠𝗕𝗥𝗢𝗦
 ⌠⅏⌡➟ ${PREFIX}link
@@ -47,6 +49,12 @@ COMANDOS:
 ⌠⅏⌡➟ ${PREFIX}pfp/perfil
 ⌠⅏⌡➟ ${PREFIX}fotogrupo
 ⌠⅏⌡➟ ${PREFIX}audiovideo/a2v 
+⌠⅏⌡➟ ${PREFIX}voz
+⌠⅏⌡➟ ${PREFIX}pajaro
+⌠⅏⌡➟ ${PREFIX}recovery
+
+
+
 ═.K.═════════
 
 𝗖𝗢𝗠𝗔𝗡𝗗𝗢𝗦 𝗦𝗫
