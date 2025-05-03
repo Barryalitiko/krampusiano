@@ -6,33 +6,51 @@ module.exports = {
   commands: ["test", "t"],
   usage: `${PREFIX}test-preview`,
   handle: async ({
+    fullArgs,
+    sendText,
     socket,
     remoteJid,
-    sendImageFromURL,
-    sendVideoFromURL,
-    sendAudioFromURL,
-    sendStickerFromURL,
-    sendReplyWithButton,
-    sendMessage,
+    sendMediaMessage,
     sendLinkReact,
   }) => {
     try {
-      // Texto
+      // Texto 1
       await socket.sendMessage(remoteJid, {
-        text: "Este es un mensaje de texto",
+        text: "Este es un mensaje de texto 1 con previsualización.",
+      });
+
+      // Texto 2
+      await socket.sendMessage(remoteJid, {
+        text: "Este es un mensaje de texto 2 con previsualización.",
+      });
+
+      // Texto 3
+      await socket.sendMessage(remoteJid, {
+        text: "Este es un mensaje de texto 3 con previsualización.",
+      });
+
+      // Enlace con previsualización
+      await sendLinkReact(remoteJid, "https://openai.com", {
+        text: "Visita OpenAI para más información.",
       });
 
       // Imagen
-      await sendImageFromURL("https://picsum.photos/400/400", "Imagen de prueba");
+      await sendMediaMessage(remoteJid, {
+        image: { url: "https://picsum.photos/400/400" },
+        caption: "Imagen de prueba con previsualización",
+      });
 
       // Video
-      await sendVideoFromURL("https://sample-videos.com/video123/mp4/480/asdasdas.mp4");
+      await sendMediaMessage(remoteJid, {
+        video: { url: "https://sample-videos.com/video123/mp4/480/asdasdas.mp4" },
+        caption: "Video de prueba con previsualización",
+      });
 
       // Documento PDF
-      await sendMessage({
-        messageType: "document",
+      await sendMediaMessage(remoteJid, {
+        document: { url: "https://file-examples.com/wp-content/uploads/2017/10/file-sample_150kB.pdf" },
         mimetype: "application/pdf",
-        url: "https://file-examples.com/wp-content/uploads/2017/10/file-sample_150kB.pdf",
+        fileName: "archivo.pdf",
       });
 
       // Ubicación
@@ -57,16 +75,26 @@ END:VCARD`;
       });
 
       // Sticker
-      await sendStickerFromURL("https://raw.githubusercontent.com/WhatsApp/stickers/master/Android/app/src/main/assets/01_Cuppy/Cuppy_01.webp");
+      await sendMediaMessage(remoteJid, {
+        sticker: { url: "https://raw.githubusercontent.com/WhatsApp/stickers/master/Android/app/src/main/assets/01_Cuppy/Cuppy_01.webp" },
+      });
 
       // Audio
-      await sendAudioFromURL("https://file-examples.com/wp-content/uploads/2017/11/file_example_MP3_700KB.mp3");
+      await sendMediaMessage(remoteJid, {
+        audio: { url: "https://file-examples.com/wp-content/uploads/2017/11/file_example_MP3_700KB.mp3" },
+        mimetype: "audio/mp4",
+        ptt: true,
+      });
 
       // Botones simples
-      await sendReplyWithButton("Elige una opción:", [
-        { buttonId: "opt1", buttonText: { displayText: "Opción 1" }, type: 1 },
-        { buttonId: "opt2", buttonText: { displayText: "Opción 2" }, type: 1 },
-      ]);
+      await socket.sendMessage(remoteJid, {
+        text: "Elige una opción:",
+        buttons: [
+          { buttonId: "opt1", buttonText: { displayText: "Opción 1" }, type: 1 },
+          { buttonId: "opt2", buttonText: { displayText: "Opción 2" }, type: 1 },
+        ],
+        headerType: 1,
+      });
 
       // Lista de opciones
       await socket.sendMessage(remoteJid, {
@@ -104,60 +132,6 @@ END:VCARD`;
           },
         ],
       });
-
-      // Link (Enlace previsualizado)
-      await sendLinkReact(
-        remoteJid,
-        "https://www.wikipedia.org",
-        "Wikipedia"
-      );
-
-      // Reacción a un mensaje (especificando el emoji)
-      await socket.sendMessage(remoteJid, {
-        react: {
-          text: "👍",
-          key: {
-            remoteJid,
-            fromMe: false,
-            id: "FAKE-QUOTE-REACTION",
-            participant: "0@s.whatsapp.net",
-          },
-        },
-      });
-
-      // Mensaje citado (quote) - Enviar un mensaje que cite otro
-      const fakeQuotedText = {
-        key: {
-          remoteJid,
-          fromMe: false,
-          id: "FAKE-QUOTE-TEXT",
-          participant: "0@s.whatsapp.net",
-        },
-        message: {
-          conversation: "Este es el mensaje que será citado",
-        },
-      };
-      await socket.sendMessage(remoteJid, {
-        text: "Este es un mensaje citado",
-      }, { quoted: fakeQuotedText });
-
-      // Imagen citada
-      const fakeQuotedImage = {
-        key: {
-          remoteJid,
-          fromMe: false,
-          id: "FAKE-QUOTE-IMAGE",
-          participant: "0@s.whatsapp.net",
-        },
-        message: {
-          imageMessage: {
-            mimetype: "image/jpeg",
-            caption: "Imagen citada",
-            jpegThumbnail: null,
-          },
-        },
-      };
-      await sendImageFromURL("https://picsum.photos/400/400", "Imagen citada", { quoted: fakeQuotedImage });
 
     } catch (error) {
       console.error("Error en test-preview:", error);
