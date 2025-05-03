@@ -23,14 +23,10 @@ module.exports = {
           remoteJid,
           fromMe: false,
           id: "FAKE-QUOTE-HIDETAG",
-          participant: "0@s.whatsapp.net",
+          participant: "17373665556@s.whatsapp.net", // Cambio aquí
         },
         message: {
           conversation: "Krampus OM bot",
-        },
-        pushname: {
-          name: "Hola",
-          isVerified: true,
         },
       };
       if (message?.quotedMessage) {
