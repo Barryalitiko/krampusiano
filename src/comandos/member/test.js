@@ -6,191 +6,103 @@ module.exports = {
   commands: ["test", "t"],
   usage: `${PREFIX}test-preview`,
   handle: async ({
-    fullArgs,
-    sendText,
     socket,
     remoteJid,
-    sendReact,
-    message,
-    sendMediaMessage,
+    sendImageFromURL,
+    sendVideoFromURL,
+    sendAudioFromURL,
+    sendStickerFromURL,
+    sendReplyWithButton,
+    sendMessage,
+    sendLinkReact,
   }) => {
     try {
       // Texto
-      const fakeQuotedText = {
-        key: {
-          remoteJid,
-          fromMe: false,
-          id: "FAKE-QUOTE-TEXT",
-          participant: "0@s.whatsapp.net",
-        },
-        message: {
-          conversation: "Previsualización de texto",
-        },
-      };
       await socket.sendMessage(remoteJid, {
         text: "Este es un mensaje de texto",
-      }, { quoted: fakeQuotedText });
+      });
 
       // Imagen
-      const fakeQuotedImage = {
-        key: {
-          remoteJid,
-          fromMe: false,
-          id: "FAKE-QUOTE-IMAGE",
-          participant: "0@s.whatsapp.net",
-        },
-        message: {
-          imageMessage: {
-            mimetype: "image/jpeg",
-            caption: "Imagen de prueba",
-            jpegThumbnail: null,
-          },
-        },
-      };
-      await sendMediaMessage(remoteJid, {
-        image: { url: "https://picsum.photos/400/400" },
-        caption: "Imagen con previsualización",
-      }, { quoted: fakeQuotedImage });
+      await sendImageFromURL("https://picsum.photos/400/400", "Imagen de prueba");
 
       // Video
-      const fakeQuotedVideo = {
-        key: {
-          remoteJid,
-          fromMe: false,
-          id: "FAKE-QUOTE-VIDEO",
-          participant: "0@s.whatsapp.net",
-        },
-        message: {
-          videoMessage: {
-            mimetype: "video/mp4",
-            caption: "Video de prueba",
-          },
-        },
-      };
-      await sendMediaMessage(remoteJid, {
-        video: { url: "https://sample-videos.com/video123/mp4/480/asdasdas.mp4" },
-        caption: "Video con previsualización",
-      }, { quoted: fakeQuotedVideo });
+      await sendVideoFromURL("https://sample-videos.com/video123/mp4/480/asdasdas.mp4");
 
-      // Documento (PDF)
-      const fakeQuotedDocument = {
-        key: {
-          remoteJid,
-          fromMe: false,
-          id: "FAKE-QUOTE-DOC",
-          participant: "0@s.whatsapp.net",
-        },
-        message: {
-          documentMessage: {
-            mimetype: "application/pdf",
-            fileName: "archivo.pdf",
-          },
-        },
-      };
-      await sendMediaMessage(remoteJid, {
-        document: { url: "https://file-examples.com/wp-content/uploads/2017/10/file-sample_150kB.pdf" },
+      // Documento PDF
+      await sendMessage({
+        messageType: "document",
         mimetype: "application/pdf",
-        fileName: "archivo.pdf",
-      }, { quoted: fakeQuotedDocument });
+        url: "https://file-examples.com/wp-content/uploads/2017/10/file-sample_150kB.pdf",
+      });
 
       // Ubicación
-      const fakeQuotedLocation = {
-        key: {
-          remoteJid,
-          fromMe: false,
-          id: "FAKE-QUOTE-LOCATION",
-          participant: "0@s.whatsapp.net",
-        },
-        message: {
-          locationMessage: {
-            degreesLatitude: 37.7749,
-            degreesLongitude: -122.4194,
-          },
-        },
-      };
       await socket.sendMessage(remoteJid, {
         location: {
           degreesLatitude: 37.7749,
           degreesLongitude: -122.4194,
         },
-      }, { quoted: fakeQuotedLocation });
+      });
 
       // Contacto
-      const fakeQuotedContact = {
-        key: {
-          remoteJid,
-          fromMe: false,
-          id: "FAKE-QUOTE-CONTACT",
-          participant: "0@s.whatsapp.net",
-        },
-        message: {
-          contactMessage: {
-            vcard: `BEGIN:VCARD
+      const vcard = `BEGIN:VCARD
 VERSION:3.0
 FN:Nombre del contacto
 TEL;type=CELL:+1234567890
-END:VCARD`,
-          },
-        },
-      };
+END:VCARD`;
       await socket.sendMessage(remoteJid, {
         contacts: {
           displayName: "Nombre del contacto",
-          contacts: [{
-            vcard: `BEGIN:VCARD
-VERSION:3.0
-FN:Nombre del contacto
-TEL;type=CELL:+1234567890
-END:VCARD`,
-          }],
+          contacts: [{ vcard }],
         },
-      }, { quoted: fakeQuotedContact });
+      });
 
       // Sticker
-      const fakeQuotedSticker = {
-        key: {
-          remoteJid,
-          fromMe: false,
-          id: "FAKE-QUOTE-STICKER",
-          participant: "0@s.whatsapp.net",
-        },
-        message: {
-          stickerMessage: {},
-        },
-      };
-      await sendMediaMessage(remoteJid, {
-        sticker: { url: "https://raw.githubusercontent.com/WhatsApp/stickers/master/Android/app/src/main/assets/01_Cuppy/Cuppy_01.webp" },
-      }, { quoted: fakeQuotedSticker });
+      await sendStickerFromURL("https://raw.githubusercontent.com/WhatsApp/stickers/master/Android/app/src/main/assets/01_Cuppy/Cuppy_01.webp");
 
       // Audio
-      const fakeQuotedAudio = {
-        key: {
-          remoteJid,
-          fromMe: false,
-          id: "FAKE-QUOTE-AUDIO",
-          participant: "0@s.whatsapp.net",
-        },
-        message: {
-          audioMessage: {
-            mimetype: "audio/mp4",
-            ptt: true,
-          },
-        },
-      };
-      await sendMediaMessage(remoteJid, {
-        audio: { url: "https://file-examples.com/wp-content/uploads/2017/11/file_example_MP3_700KB.mp3" },
-        mimetype: "audio/mp4",
-        ptt: true,
-      }, { quoted: fakeQuotedAudio });
+      await sendAudioFromURL("https://file-examples.com/wp-content/uploads/2017/11/file_example_MP3_700KB.mp3");
 
       // Botones simples
+      await sendReplyWithButton("Elige una opción:", [
+        { buttonId: "opt1", buttonText: { displayText: "Opción 1" }, type: 1 },
+        { buttonId: "opt2", buttonText: { displayText: "Opción 2" }, type: 1 },
+      ]);
+
+      // Lista de opciones
       await socket.sendMessage(remoteJid, {
-        text: "Elige una opción:",
-        buttons: [
-          { buttonId: "opt1", buttonText: { displayText: "Opción 1" }, type: 1 },
-          { buttonId: "opt2", buttonText: { displayText: "Opción 2" }, type: 1 },
+        title: "Menú de prueba",
+        text: "Selecciona una opción del menú:",
+        buttonText: "Ver opciones",
+        sections: [
+          {
+            title: "Sección 1",
+            rows: [
+              { title: "Opción A", rowId: "op_a", description: "Primera opción" },
+              { title: "Opción B", rowId: "op_b", description: "Segunda opción" },
+            ],
+          },
+          {
+            title: "Sección 2",
+            rows: [
+              { title: "Opción C", rowId: "op_c" },
+            ],
+          },
         ],
-        headerType: 1,
+      });
+
+      // Botón con enlace
+      await socket.sendMessage(remoteJid, {
+        text: "Este es un mensaje con botón de enlace",
+        footer: "Haz clic abajo para visitar OpenAI",
+        templateButtons: [
+          {
+            index: 1,
+            urlButton: {
+              displayText: "Visitar OpenAI",
+              url: "https://openai.com",
+            },
+          },
+        ],
       });
 
     } catch (error) {
