@@ -14,36 +14,21 @@ module.exports = {
     sendLinkReact,
   }) => {
     try {
-      // Texto 1
+      // Texto
       await socket.sendMessage(remoteJid, {
-        text: "Este es un mensaje de texto 1 con previsualización.",
-      });
-
-      // Texto 2
-      await socket.sendMessage(remoteJid, {
-        text: "Este es un mensaje de texto 2 con previsualización.",
-      });
-
-      // Texto 3
-      await socket.sendMessage(remoteJid, {
-        text: "Este es un mensaje de texto 3 con previsualización.",
-      });
-
-      // Enlace con previsualización
-      await sendLinkReact(remoteJid, "https://openai.com", {
-        text: "Visita OpenAI para más información.",
+        text: "Este es un mensaje de texto con previsualización.",
       });
 
       // Imagen
       await sendMediaMessage(remoteJid, {
         image: { url: "https://picsum.photos/400/400" },
-        caption: "Imagen de prueba con previsualización",
+        caption: "Imagen con previsualización",
       });
 
       // Video
       await sendMediaMessage(remoteJid, {
         video: { url: "https://sample-videos.com/video123/mp4/480/asdasdas.mp4" },
-        caption: "Video de prueba con previsualización",
+        caption: "Video con previsualización",
       });
 
       // Documento PDF
