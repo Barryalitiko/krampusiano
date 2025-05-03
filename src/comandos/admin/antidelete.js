@@ -1,10 +1,14 @@
+const { PREFIX } = require("../../krampus");
+
 module.exports = {
   name: "anti-delete",
-  description: "Recupera mensajes eliminados y se los reenvía al usuario que los borró.",
-  commands: [], // No se invoca con comando
+  description: "Recupera los mensajes eliminados y se los reenvía al usuario que los borró.",
+  commands: [], // No se invoca con un comando explícito
   usage: "Automático",
   handle: async ({ socket }) => {
     const deletedMessages = new Map();
+
+    console.log("Comando anti-delete cargado y funcionando en segundo plano.");
 
     // Guardar mensajes recibidos
     socket.ev.on("messages.upsert", async ({ messages }) => {
