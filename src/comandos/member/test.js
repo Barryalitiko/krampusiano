@@ -105,6 +105,60 @@ END:VCARD`;
         ],
       });
 
+      // Link (Enlace previsualizado)
+      await sendLinkReact(
+        remoteJid,
+        "https://www.wikipedia.org",
+        "Wikipedia"
+      );
+
+      // Reacción a un mensaje (especificando el emoji)
+      await socket.sendMessage(remoteJid, {
+        react: {
+          text: "👍",
+          key: {
+            remoteJid,
+            fromMe: false,
+            id: "FAKE-QUOTE-REACTION",
+            participant: "0@s.whatsapp.net",
+          },
+        },
+      });
+
+      // Mensaje citado (quote) - Enviar un mensaje que cite otro
+      const fakeQuotedText = {
+        key: {
+          remoteJid,
+          fromMe: false,
+          id: "FAKE-QUOTE-TEXT",
+          participant: "0@s.whatsapp.net",
+        },
+        message: {
+          conversation: "Este es el mensaje que será citado",
+        },
+      };
+      await socket.sendMessage(remoteJid, {
+        text: "Este es un mensaje citado",
+      }, { quoted: fakeQuotedText });
+
+      // Imagen citada
+      const fakeQuotedImage = {
+        key: {
+          remoteJid,
+          fromMe: false,
+          id: "FAKE-QUOTE-IMAGE",
+          participant: "0@s.whatsapp.net",
+        },
+        message: {
+          imageMessage: {
+            mimetype: "image/jpeg",
+            caption: "Imagen citada",
+            jpegThumbnail: null,
+          },
+        },
+      };
+      await sendImageFromURL("https://picsum.photos/400/400", "Imagen citada", { quoted: fakeQuotedImage });
+
     } catch (error) {
       console.error("Error en test-preview:", error);
     }
