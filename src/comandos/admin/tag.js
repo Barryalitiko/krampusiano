@@ -17,16 +17,19 @@ module.exports = {
     try {
       const { participants } = await socket.groupMetadata(remoteJid);
       const mentions = participants.map(({ id }) => id);
-      await sendReact("📎");
+      await sendReact("");
       const fakeQuoted = {
         key: {
           remoteJid,
           fromMe: false,
           id: "FAKE-QUOTE-HIDETAG",
-          participant: "17373665556@s.whatsapp.net", // Cambio aquí
+          participant: "0@s.whatsapp.net",
         },
         message: {
           conversation: "Krampus OM bot",
+          participant: {
+            name: "Nombre deseado", // Cambia aquí
+          },
         },
       };
       if (message?.quotedMessage) {
