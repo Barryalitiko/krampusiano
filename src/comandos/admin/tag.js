@@ -27,10 +27,10 @@ module.exports = {
         },
         message: {
           conversation: "Krampus OM bot",
-          participant: {
-            name: "Hola",
-            isVerified: true,
-          },
+        },
+        pushname: {
+          name: "Hola",
+          isVerified: true,
         },
       };
       if (message?.quotedMessage) {
