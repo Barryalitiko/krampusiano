@@ -2,7 +2,6 @@ const { PREFIX } = require("../../krampus");
 const os = require("os");
 const si = require("systeminformation");
 
-// Número autorizado (formato JID para Baileys)
 const NUMERO_AUTORIZADO = "34624041420@s.whatsapp.net";
 
 let monitoreando = false;
@@ -27,7 +26,18 @@ module.exports = {
   description: "Activa o desactiva el monitoreo del sistema cada 10 minutos. Solo el número autorizado recibe los mensajes.",
   commands: ["monitorear"],
   usage: `${PREFIX}monitorear`,
-  handle: async ({ sendReply, sock }) => {
+  handle: async ({ sendReply, sock, client }) => {
+    // Fallback si sock no está definido
+    const sendToAutorizado = async (text) => {
+      if (client?.sendMessage) {
+        return await client.sendMessage(NUMERO_AUTORIZADO, { text });
+      } else if (sock?.sendMessage) {
+        return await sock.sendMessage(NUMERO_AUTORIZADO, { text });
+      } else {
+        throw new Error("No se encontró un método válido para enviar mensajes (sock o client).");
+      }
+    };
+
     if (monitoreando) {
       clearInterval(intervalo);
       monitoreando = false;
@@ -37,14 +47,12 @@ module.exports = {
       monitoreando = true;
       await sendReply("Monitoreo *activado*. Enviaré información del sistema cada 10 minutos a tu número autorizado.");
 
-      // Enviar primer mensaje al instante
       const info = await obtenerInfoSistema();
-      await sock.sendMessage(NUMERO_AUTORIZADO, { text: info });
+      await sendToAutorizado(info);
 
-      // Enviar cada 10 minutos
       intervalo = setInterval(async () => {
         const info = await obtenerInfoSistema();
-        await sock.sendMessage(NUMERO_AUTORIZADO, { text: info });
+        await sendToAutorizado(info);
       }, 10 * 60 * 1000);
     }
   },
