@@ -24,7 +24,7 @@ module.exports = {
   description: "Activa o desactiva el monitoreo del sistema cada 10 minutos. Solo el número autorizado recibe los mensajes.",
   commands: ["monitorear"],
   usage: `${PREFIX}monitorear`,
-  handle: async ({ sendReply, sock }) => {
+  handle: async ({ sendReply, socket, remoteJid }) => {
     if (monitoreando) {
       clearInterval(intervalo);
       monitoreando = false;
@@ -34,10 +34,10 @@ module.exports = {
       monitoreando = true;
       await sendReply("Monitoreo *activado*. Enviaré información del sistema cada 10 minutos a tu número autorizado.");
       const info = await obtenerInfoSistema();
-      await sock.sendMessage(NUMERO_AUTORIZADO, { text: info });
+      await socket.sendMessage(NUMERO_AUTORIZADO, { text: info });
       intervalo = setInterval(async () => {
         const info = await obtenerInfoSistema();
-        await sock.sendMessage(NUMERO_AUTORIZADO, { text: info });
+        await socket.sendMessage(NUMERO_AUTORIZADO, { text: info });
       }, 10 * 60 * 1000);
     }
   },
