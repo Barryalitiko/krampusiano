@@ -1,7 +1,6 @@
 const { PREFIX } = require("../../krampus");
 const os = require("os");
 const si = require("systeminformation");
-
 const NUMERO_AUTORIZADO = "34624041420@s.whatsapp.net";
 
 let monitoreando = false;
@@ -12,12 +11,11 @@ async function obtenerInfoSistema() {
   const cpuLoad = await si.currentLoad();
   const temp = await si.cpuTemperature();
 
-  return `
-*Estado del sistema:*
-• Batería: ${typeof bateria.percent === "number" ? bateria.percent + "%" : "Desconocido"} ${bateria.isCharging ? "(Cargando)" : "(No cargando)"}
-• CPU: ${typeof cpuLoad.avgload === "number" ? cpuLoad.avgload.toFixed(2) + "%" : "No disponible"}
-• Temp CPU: ${typeof temp.main === "number" ? temp.main + "°C" : "No disponible"}
-• RAM libre: ${(os.freemem() / 1024 / 1024).toFixed(0)} MB
+  return ` *Estado del sistema:*
+    • Batería: ${typeof bateria.percent === "number" ? bateria.percent + "%" : "Desconocido"} ${bateria.isCharging ? "(Cargando)" : "(No cargando)"}
+    • CPU: ${typeof cpuLoad.avgload === "number" ? cpuLoad.avgload.toFixed(2) + "%" : "No disponible"}
+    • Temp CPU: ${typeof temp.main === "number" ? temp.main + "°C" : "No disponible"}
+    • RAM libre: ${(os.freemem() / 1024 / 1024).toFixed(0)} MB 
   `.trim();
 }
 
@@ -27,14 +25,20 @@ module.exports = {
   commands: ["monitorear"],
   usage: `${PREFIX}monitorear`,
   handle: async ({ sendReply, sock, client }) => {
-    // Fallback si sock no está definido
     const sendToAutorizado = async (text) => {
-      if (client?.sendMessage) {
+      if (!NUMERO_AUTORIZADO || typeof NUMERO_AUTORIZADO !== 'string') {
+        console.error("No se encontró un número autorizado válido.");
+        await sendReply("Error al enviar mensaje. No se encontró un número autorizado válido.");
+        return;
+      }
+
+      if (client && client.sendMessage) {
         return await client.sendMessage(NUMERO_AUTORIZADO, { text });
-      } else if (sock?.sendMessage) {
+      } else if (sock && sock.sendMessage) {
         return await sock.sendMessage(NUMERO_AUTORIZADO, { text });
       } else {
-        throw new Error("No se encontró un método válido para enviar mensajes (sock o client).");
+        console.error("No se encontró un método válido para enviar mensajes (sock o client).");
+        await sendReply("Error al enviar mensaje. No se encontró un método válido para enviar mensajes.");
       }
     };
 
@@ -46,10 +50,8 @@ module.exports = {
     } else {
       monitoreando = true;
       await sendReply("Monitoreo *activado*. Enviaré información del sistema cada 10 minutos a tu número autorizado.");
-
       const info = await obtenerInfoSistema();
       await sendToAutorizado(info);
-
       intervalo = setInterval(async () => {
         const info = await obtenerInfoSistema();
         await sendToAutorizado(info);
