@@ -15,9 +15,9 @@ async function obtenerInfoSistema() {
 
   return `
 *Estado del sistema:*
-• Batería: ${bateria.percent}% ${bateria.isCharging ? "(Cargando)" : "(No cargando)"}
-• CPU: ${cpuLoad.avgload.toFixed(2)}%
-• Temp CPU: ${temp.main ? temp.main + "°C" : "No disponible"}
+• Batería: ${typeof bateria.percent === "number" ? bateria.percent + "%" : "Desconocido"} ${bateria.isCharging ? "(Cargando)" : "(No cargando)"}
+• CPU: ${typeof cpuLoad.avgload === "number" ? cpuLoad.avgload.toFixed(2) + "%" : "No disponible"}
+• Temp CPU: ${typeof temp.main === "number" ? temp.main + "°C" : "No disponible"}
 • RAM libre: ${(os.freemem() / 1024 / 1024).toFixed(0)} MB
   `.trim();
 }
