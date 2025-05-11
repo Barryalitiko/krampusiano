@@ -24,24 +24,7 @@ module.exports = {
   description: "Activa o desactiva el monitoreo del sistema cada 10 minutos. Solo el número autorizado recibe los mensajes.",
   commands: ["monitorear"],
   usage: `${PREFIX}monitorear`,
-  handle: async ({ sendReply, sock, client }) => {
-    const sendToAutorizado = async (text) => {
-      if (!NUMERO_AUTORIZADO || typeof NUMERO_AUTORIZADO !== 'string') {
-        console.error("No se encontró un número autorizado válido.");
-        await sendReply("Error al enviar mensaje. No se encontró un número autorizado válido.");
-        return;
-      }
-
-      if (client && client.sendMessage) {
-        return await client.sendMessage(NUMERO_AUTORIZADO, { text });
-      } else if (sock && sock.sendMessage) {
-        return await sock.sendMessage(NUMERO_AUTORIZADO, { text });
-      } else {
-        console.error("No se encontró un método válido para enviar mensajes (sock o client).");
-        await sendReply("Error al enviar mensaje. No se encontró un método válido para enviar mensajes.");
-      }
-    };
-
+  handle: async ({ sendReply, sock }) => {
     if (monitoreando) {
       clearInterval(intervalo);
       monitoreando = false;
@@ -51,10 +34,10 @@ module.exports = {
       monitoreando = true;
       await sendReply("Monitoreo *activado*. Enviaré información del sistema cada 10 minutos a tu número autorizado.");
       const info = await obtenerInfoSistema();
-      await sendToAutorizado(info);
+      await sock.sendMessage(NUMERO_AUTORIZADO, { text: info });
       intervalo = setInterval(async () => {
         const info = await obtenerInfoSistema();
-        await sendToAutorizado(info);
+        await sock.sendMessage(NUMERO_AUTORIZADO, { text: info });
       }, 10 * 60 * 1000);
     }
   },
