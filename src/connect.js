@@ -9,7 +9,7 @@ const {
   isJidStatusBroadcast,
   proto,
   isJidNewsletter,
-} = require("@whiskeysockets/baileys"); // <--- Se cambia la importación
+} = require("@whiskeysockets/baileys"); 
 
 const NodeCache = require("node-cache");
 const pino = require("pino");
@@ -56,7 +56,7 @@ async function connect() {
   if (!socket.authState.creds.registered) {
     warningLog("¡Credenciales no configuradas!");
 
-    infoLog('Ingrese su número sin el + (ejemplo: "13733665556"):');
+    infoLog('Ingrese su número sin el + mmñm (ejemplo: "13733665556"):');
 
     const phoneNumber = await question("Ingresa el número: ");
 
