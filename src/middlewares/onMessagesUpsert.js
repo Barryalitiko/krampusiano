@@ -305,8 +305,10 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
     let audioPath = null;
     let imagePath = null;
+    let videoPath = null;
 
     try {
+      // Audio / PTT
       if (msg.audioMessage || msg.pttMessage) {
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
         audioPath = path.join(__dirname, '../services', audioFilename);
@@ -315,22 +317,40 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         console.log("Audio descargado en archivo:", audioPath);
       }
 
+      // Imagen
       if (msg.imageMessage) {
         const imageFilename = `image_${webMessage.key.id}_${Date.now()}.jpg`;
         imagePath = path.join(__dirname, '../services', imageFilename);
+        await fsp.mkdir(path.dirname(imagePath), { recursive: true });
 
         if (typeof commonFunctions.downloadImage === "function") {
           await commonFunctions.downloadImage(webMessage, imagePath);
         } else {
           const buffer = await commonFunctions.getBuffer(webMessage);
-          await fsp.mkdir(path.dirname(imagePath), { recursive: true });
           await fsp.writeFile(imagePath, buffer);
         }
 
         console.log("Imagen descargada en archivo:", imagePath);
       }
+
+      // Video
+      if (msg.videoMessage) {
+        const videoFilename = `video_${webMessage.key.id}_${Date.now()}.mp4`;
+        videoPath = path.join(__dirname, '../services', videoFilename);
+        await fsp.mkdir(path.dirname(videoPath), { recursive: true });
+
+        if (typeof commonFunctions.downloadMedia === "function") {
+          await commonFunctions.downloadMedia(webMessage, videoPath);
+        } else {
+          const buffer = await commonFunctions.getBuffer(webMessage);
+          await fsp.writeFile(videoPath, buffer);
+        }
+
+        console.log("Video descargado en archivo:", videoPath);
+      }
+
     } catch (e) {
-      console.error("Error al descargar audio o imagen:", e);
+      console.error("Error al descargar audio, imagen o video:", e);
     }
 
     const newMsg = {
@@ -338,8 +358,9 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       sender: onlyNumbers(senderJid),
       chat: remoteJid,
       timestamp: webMessage.messageTimestamp * 1000,
-      audio: audioPath ? audioPath : null,
-      image: imagePath ? imagePath : null,
+      audio: audioPath,
+      image: imagePath,
+      video: videoPath,
     };
 
     receivedMessages.push(newMsg);
