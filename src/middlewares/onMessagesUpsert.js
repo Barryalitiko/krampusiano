@@ -288,7 +288,7 @@ app.listen(PORT, () => {
 
 // Función que se ejecuta cuando llegan mensajes de WhatsApp
 
-En el proceso, quitaste la parte que tenía este otro a responder a los comandos 
+
 
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) {
