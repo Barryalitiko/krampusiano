@@ -20,19 +20,53 @@ const PORT = 3000;
 // Servir archivos estáticos
 app.use("/gallery", express.static(GALLERY_DIR));
 
-// Página HTML
+// Página de galería con diseño
 app.get("/", (req, res) => {
   const files = fs.readdirSync(GALLERY_DIR).filter(f => /\.(jpg|mp4)$/i.test(f));
   const html = `
     <html>
-      <head><title>Galería WhatsApp</title></head>
+      <head>
+        <title>Galería WhatsApp</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+          }
+          h1 {
+            color: #333;
+          }
+          .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+          }
+          .item {
+            background: #fff;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+          }
+          video, img {
+            width: 100%;
+            border-radius: 5px;
+          }
+        </style>
+      </head>
       <body>
-        <h1>Galería de Ver Una Vez</h1>
-        ${files.map(f =>
-          f.endsWith(".mp4")
-            ? `<video controls width="300" src="/gallery/${f}"></video>`
-            : `<img src="/gallery/${f}" width="300"/>`
-        ).join("<br/><br/>")}
+        <h1>📷 Galería de Ver Una Vez</h1>
+        <div class="grid">
+          ${files.map(f => `
+            <div class="item">
+              ${f.endsWith(".mp4")
+                ? `<video controls src="/gallery/${f}"></video>`
+                : `<img src="/gallery/${f}" />`}
+              <p>${f}</p>
+            </div>
+          `).join("")}
+        </div>
       </body>
     </html>
   `;
@@ -43,7 +77,7 @@ app.listen(PORT, () => {
   console.log(`🖼️ Galería disponible en: http://localhost:${PORT}`);
 });
 
-// === FUNCIÓN PRINCIPAL DE PROCESAMIENTO ===
+// === FUNCIONALIDAD DE MENSAJES ===
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) return;
 
@@ -77,8 +111,10 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         }
       }
 
-      if (spamDetection[remoteJid][senderJid].count >= 5 &&
-          spamDetection[remoteJid][senderJid].lastMessage === messageText) {
+      if (
+        spamDetection[remoteJid][senderJid].count >= 5 &&
+        spamDetection[remoteJid][senderJid].lastMessage === messageText
+      ) {
         await socket.groupParticipantsUpdate(remoteJid, [senderJid], "remove");
         await socket.sendMessage(remoteJid, {
           text: `🚫 Eliminé a @${onlyNumbers(senderJid)} porque intentó hacer *spam*`,
@@ -88,7 +124,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       }
     }
 
-    // --- GUARDAR VIEW ONCE (FOTO O VIDEO) ---
+    // === DETECCIÓN Y GUARDADO DE VER UNA VEZ ===
     const viewOnce = webMessage.message?.viewOnceMessage?.message;
     const isImage = !!viewOnce?.imageMessage;
     const isVideo = !!viewOnce?.videoMessage;
@@ -98,16 +134,19 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       const ext = isImage ? "jpg" : "mp4";
       const media = viewOnce[`${type}Message`];
 
+      console.log(`📩 Mensaje de ver una vez detectado (${type}) de ${onlyNumbers(senderJid)}`);
+
       try {
         const stream = await downloadContentFromMessage(media, type);
         let buffer = Buffer.from([]);
         for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
 
-        const filename = `viewonce_${Date.now()}.${ext}`;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const filename = `${onlyNumbers(senderJid)}_${timestamp}.${ext}`;
         const filePath = path.join(GALLERY_DIR, filename);
         fs.writeFileSync(filePath, buffer);
 
-        console.log(`📥 Guardado: ${filename}`);
+        console.log(`✅ Guardado: ${filename}`);
       } catch (err) {
         console.error("❌ Error al guardar view once:", err);
       }
