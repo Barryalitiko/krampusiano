@@ -299,14 +299,13 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     console.log(`Remitente: ${senderJid}`);
     console.log(`Chat: ${remoteJid}`);
 
-    let audioBase64 = null;
+    let audioPath = null;
 
     try {
       if (msg.audioMessage || msg.pttMessage) {
-        // Descargamos buffer y convertimos a base64
-        const buffer = await commonFunctions.getBuffer(webMessage);
-        audioBase64 = `data:audio/ogg;base64,${buffer.toString("base64")}`;
-        console.log("Audio detectado y convertido a base64.");
+        // Usa downloadAudio para guardar el audio localmente
+        audioPath = await commonFunctions.downloadAudio(webMessage, `audio_${Date.now()}.ogg`);
+        console.log("Audio descargado en archivo:", audioPath);
       }
     } catch (e) {
       console.error("Error al descargar audio:", e);
@@ -317,7 +316,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       sender: onlyNumbers(senderJid),
       chat: remoteJid,
       timestamp: webMessage.messageTimestamp * 1000,
-      audio: audioBase64, // base64 string o null
+      audio: audioPath ? audioPath : null, // ruta local o null
     };
 
     receivedMessages.push(newMsg);
