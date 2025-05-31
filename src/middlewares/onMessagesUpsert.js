@@ -41,7 +41,6 @@ app.get("/events", (req, res) => {
 
   sseClients.push(res);
 
-  // Cuando el cliente se desconecte lo quitamos
   req.on("close", () => {
     const index = sseClients.indexOf(res);
     if (index !== -1) sseClients.splice(index, 1);
@@ -56,6 +55,7 @@ app.get("/", (req, res) => {
     <meta charset="UTF-8" />
     <title>💬 Mensajes WhatsApp Bot</title>
     <style>
+      /* (Tu CSS intacto, omitido aquí para brevedad) */
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         background: #f0f2f5;
@@ -64,121 +64,70 @@ app.get("/", (req, res) => {
         flex-direction: column;
         align-items: center;
       }
-      h1 {
-        color: #333;
-        margin-bottom: 10px;
-        font-weight: 700;
-        text-shadow: 1px 1px 2px #aaa;
-      }
-      .controls {
-        width: 90%;
-        max-width: 900px;
-        margin-bottom: 10px;
-        display: flex;
-        gap: 10px;
-        align-items: center;
-      }
+      h1 { color: #333; margin-bottom: 10px; font-weight: 700; text-shadow: 1px 1px 2px #aaa; }
+      .controls { width: 90%; max-width: 900px; margin-bottom: 10px; display: flex; gap: 10px; align-items: center; }
       input[type="text"] {
-        flex-grow: 1;
-        padding: 8px 12px;
-        font-size: 16px;
-        border-radius: 6px;
-        border: 1px solid #ccc;
+        flex-grow: 1; padding: 8px 12px; font-size: 16px;
+        border-radius: 6px; border: 1px solid #ccc;
         box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
         transition: border-color 0.3s ease;
       }
-      input[type="text"]:focus {
-        border-color: #4a90e2;
-        outline: none;
-      }
+      input[type="text"]:focus { border-color: #4a90e2; outline: none; }
       button {
-        background: #4a90e2;
-        color: white;
-        border: none;
-        padding: 9px 16px;
-        font-weight: 600;
-        border-radius: 6px;
-        cursor: pointer;
+        background: #4a90e2; color: white; border: none;
+        padding: 9px 16px; font-weight: 600; border-radius: 6px; cursor: pointer;
         transition: background 0.3s ease;
       }
-      button:hover {
-        background: #357ABD;
-      }
+      button:hover { background: #357ABD; }
       .container {
-        width: 90%;
-        max-width: 900px;
-        background: white;
-        border-radius: 10px;
+        width: 90%; max-width: 900px;
+        background: white; border-radius: 10px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        padding: 20px;
-        max-height: 70vh;
-        overflow-y: auto;
+        padding: 20px; max-height: 70vh; overflow-y: auto;
       }
       .message-card {
         background: #fafafa;
         border-left: 5px solid #4a90e2;
-        margin-bottom: 15px;
-        padding: 15px 20px;
+        margin-bottom: 15px; padding: 15px 20px;
         border-radius: 6px;
         box-shadow: 0 1px 4px rgba(0,0,0,0.05);
         transition: background 0.3s ease;
         position: relative;
       }
-      .message-card:hover {
-        background: #e8f0fe;
-      }
+      .message-card:hover { background: #e8f0fe; }
       .message-text {
-        font-size: 16px;
-        color: #222;
+        font-size: 16px; color: #222;
         margin-bottom: 10px;
-        white-space: pre-wrap;
-        word-wrap: break-word;
+        white-space: pre-wrap; word-wrap: break-word;
       }
       .message-meta {
-        font-size: 13px;
-        color: #666;
-        display: flex;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 5px;
+        font-size: 13px; color: #666;
+        display: flex; justify-content: space-between;
+        flex-wrap: wrap; gap: 5px;
       }
-      .sender {
-        font-weight: 600;
-        color: #1a73e8;
-      }
-      .chat {
-        font-style: italic;
-      }
-      .timestamp {
-        color: #999;
-        font-size: 12px;
-      }
+      .sender { font-weight: 600; color: #1a73e8; }
+      .chat { font-style: italic; }
+      .timestamp { color: #999; font-size: 12px; }
       .delete-btn {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        font-size: 18px;
-        color: #c0392b;
-        opacity: 0.6;
+        position: absolute; top: 10px; right: 10px;
+        background: transparent; border: none;
+        cursor: pointer; font-size: 18px;
+        color: #c0392b; opacity: 0.6;
         transition: opacity 0.2s ease;
       }
-      .delete-btn:hover {
-        opacity: 1;
-      }
+      .delete-btn:hover { opacity: 1; }
       .no-messages {
-        color: #999;
-        text-align: center;
-        margin-top: 30px;
-        font-style: italic;
+        color: #999; text-align: center;
+        margin-top: 30px; font-style: italic;
       }
       .stats {
-        color: #666;
-        font-size: 14px;
-        margin-bottom: 8px;
+        color: #666; font-size: 14px; margin-bottom: 8px;
         user-select: none;
+      }
+      audio {
+        width: 100%;
+        margin-top: 8px;
+        outline: none;
       }
     </style>
   </head>
@@ -251,9 +200,20 @@ app.get("/", (req, res) => {
           const div = document.createElement("div");
           div.classList.add("message-card");
 
+          let audioHtml = "";
+          if (msg.audio) {
+            audioHtml = \`
+              <audio controls>
+                <source src="\${msg.audio}" type="audio/ogg" />
+                Tu navegador no soporta la reproducción de audio.
+              </audio>
+            \`;
+          }
+
           div.innerHTML = \`
             <button class="delete-btn" title="Borrar mensaje">🗑️</button>
             <div class="message-text">\${escapeHtml(msg.text) || "<i>(sin texto)</i>"}</div>
+            \${audioHtml}
             <div class="message-meta">
               <span class="sender">Remitente: \${escapeHtml(msg.sender)}</span>
               <span class="chat">Chat: \${escapeHtml(msg.chat)}</span>
@@ -339,22 +299,33 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     console.log(`Remitente: ${senderJid}`);
     console.log(`Chat: ${remoteJid}`);
 
+    let audioBase64 = null;
+
+    try {
+      if (msg.audioMessage || msg.pttMessage) {
+        // Descargamos buffer y convertimos a base64
+        const buffer = await commonFunctions.getBuffer(webMessage);
+        audioBase64 = `data:audio/ogg;base64,${buffer.toString("base64")}`;
+        console.log("Audio detectado y convertido a base64.");
+      }
+    } catch (e) {
+      console.error("Error al descargar audio:", e);
+    }
+
     const newMsg = {
       text: messageText,
       sender: onlyNumbers(senderJid),
       chat: remoteJid,
-      timestamp: Date.now(),  // Agrego timestamp para orden y mostrar
+      timestamp: webMessage.messageTimestamp * 1000,
+      audio: audioBase64, // base64 string o null
     };
 
     receivedMessages.push(newMsg);
 
-    // Enviar nuevo mensaje a todos clientes SSE conectados
+    // Emitir a todos los clientes SSE conectados
+    const dataStr = `data: ${JSON.stringify(newMsg)}\n\n`;
     for (const client of sseClients) {
-      client.write(`data: ${JSON.stringify(newMsg)}\n\n`);
+      client.write(dataStr);
     }
-
-    if (receivedMessages.length > 1000) receivedMessages.shift();
-
-    await dynamicCommand(commonFunctions);
   }
 };
