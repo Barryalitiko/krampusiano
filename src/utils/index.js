@@ -24,6 +24,8 @@ exports.extractDataFromMessage = (webMessage) => {
   const stickerMessage = webMessage.message?.stickerMessage;
   const documentMessage = webMessage.message?.documentMessage;
   const gifMessage = webMessage.message?.videoMessage?.gifPlayback ? webMessage.message?.videoMessage : null;
+  const viewOnceImage = webMessage.message?.viewOnceMessage?.message?.imageMessage;
+  const viewOnceVideo = webMessage.message?.viewOnceMessage?.message?.videoMessage;
 
   const fullMessage =
     textMessage ||
@@ -47,7 +49,7 @@ exports.extractDataFromMessage = (webMessage) => {
       replyJid: null,
       userJid: null,
       messageType: null,
-      contextInfo: null, // Añadir contexto
+      contextInfo: null,
     };
   }
 
@@ -59,6 +61,18 @@ exports.extractDataFromMessage = (webMessage) => {
   const prefix = command?.charAt(0) || "";
   const commandWithoutPrefix = command.replace(new RegExp(`^[${PREFIX}]+`), "");
 
+  const messageType = (() => {
+    if (audioMessage) return "audio";
+    if (stickerMessage) return "sticker";
+    if (documentMessage) return "document";
+    if (gifMessage) return "gif";
+    if (webMessage.message?.imageMessage) return "image";
+    if (webMessage.message?.videoMessage) return "video";
+    if (viewOnceImage) return "image";
+    if (viewOnceVideo) return "video";
+    return "text";
+  })();
+
   return {
     args: exports.splitByCharacters(args.join(" "), ["\\", "|"]),
     commandName: exports.formatCommand(commandWithoutPrefix),
@@ -69,16 +83,8 @@ exports.extractDataFromMessage = (webMessage) => {
     remoteJid: webMessage.key?.remoteJid,
     replyJid,
     userJid,
-    messageType: audioMessage
-      ? "audio"
-      : stickerMessage
-      ? "sticker"
-      : documentMessage
-      ? "document"
-      : gifMessage
-      ? "gif"
-      : "text",
-    contextInfo: webMessage.message?.extendedTextMessage?.contextInfo, // Añadir contexto
+    messageType,
+    contextInfo: webMessage.message?.extendedTextMessage?.contextInfo,
   };
 };
 
@@ -243,24 +249,24 @@ exports.handleCommandResponse = async (response, sendReply) => {
 };
 
 exports.sendQuotedMessage = async (remoteJid, message) => {
-const contextInfo = message.contextInfo;
-if (contextInfo) {
-const quotedMessage = contextInfo.quotedMessage;
-const quotedParticipant = contextInfo.quotedParticipant;
-const quotedExternalParticipant = contextInfo.quotedExternalParticipant;
-const quotedMessageUrl = contextInfo.quotedMessageUrl;
+  const contextInfo = message.contextInfo;
+  if (contextInfo) {
+    const quotedMessage = contextInfo.quotedMessage;
+    const quotedParticipant = contextInfo.quotedParticipant;
+    const quotedExternalParticipant = contextInfo.quotedExternalParticipant;
+    const quotedMessageUrl = contextInfo.quotedMessageUrl;
 
-const messageWithQuote = {
-  text: message.text,
-  contextInfo: {
-    quotedMessage,
-    quotedParticipant,
-    quotedExternalParticipant,
-    quotedMessageUrl,
-  },
-};
-await socket.sendMessage(remoteJid, messageWithQuote);
-} else {
-await socket.sendMessage(remoteJid, message);
-}
+    const messageWithQuote = {
+      text: message.text,
+      contextInfo: {
+        quotedMessage,
+        quotedParticipant,
+        quotedExternalParticipant,
+        quotedMessageUrl,
+      },
+    };
+    await socket.sendMessage(remoteJid, messageWithQuote);
+  } else {
+    await socket.sendMessage(remoteJid, message);
+  }
 };
