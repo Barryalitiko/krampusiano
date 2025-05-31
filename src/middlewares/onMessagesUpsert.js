@@ -287,7 +287,7 @@ app.listen(PORT, () => {
 });
 
 // Función que se ejecuta cuando llegan mensajes de WhatsApp
-Que funcion anda usando aqui para descargar imagen?
+
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) {
     console.log("No hay mensajes nuevos en este upsert.");
