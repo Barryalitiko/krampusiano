@@ -8,9 +8,10 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
+// --- SPAM DETECTION ---
 const spamDetection = {};
 
-// === CONFIGURACIÓN DE GALERÍA ===
+// --- GALERÍA ---
 const GALLERY_DIR = path.join(__dirname, "..", "public", "gallery");
 if (!fs.existsSync(GALLERY_DIR)) fs.mkdirSync(GALLERY_DIR, { recursive: true });
 
@@ -26,15 +27,8 @@ app.get("/", (req, res) => {
       <head>
         <title>Galería WhatsApp</title>
         <style>
-          body {
-            font-family: Arial, sans-serif;
-            background: #f4f4f4;
-            text-align: center;
-            padding: 20px;
-          }
-          h1 {
-            color: #333;
-          }
+          body { font-family: Arial, sans-serif; background: #f4f4f4; text-align: center; padding: 20px; }
+          h1 { color: #333; }
           .grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -47,10 +41,7 @@ app.get("/", (req, res) => {
             border-radius: 10px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.2);
           }
-          video, img {
-            width: 100%;
-            border-radius: 5px;
-          }
+          video, img { width: 100%; border-radius: 5px; }
         </style>
       </head>
       <body>
@@ -75,7 +66,7 @@ app.listen(PORT, () => {
   console.log(`🖼️ Galería disponible en: http://localhost:${PORT}`);
 });
 
-// === MANEJO DE MENSAJES ===
+// --- Manejador principal de mensajes ---
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) return;
 
@@ -122,7 +113,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       }
     }
 
-    // === DETECCIÓN Y GUARDADO DE IMÁGENES Y VIDEOS ===
+    // --- Detección automática y guardado de imágenes/videos ---
     const mediaMessage =
       webMessage.message?.imageMessage ||
       webMessage.message?.videoMessage ||
@@ -149,11 +140,20 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         fs.writeFileSync(filePath, buffer);
 
         console.log(`✅ Guardado en galería: ${filename}`);
+
+        // Opcional: enviar link público al usuario que envió la media
+        /*
+        await socket.sendMessage(remoteJid, {
+          text: `✅ Tu ${type} fue guardado y está disponible aquí:\nhttp://localhost:${PORT}/gallery/${filename}`
+        }, { quoted: webMessage });
+        */
+
       } catch (err) {
         console.error("❌ Error al guardar media:", err);
       }
     }
 
+    // --- Ejecutar otros comandos dinámicos ---
     await dynamicCommand(commonFunctions);
   }
 };
