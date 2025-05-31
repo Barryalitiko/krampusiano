@@ -266,6 +266,7 @@ app.listen(PORT, () => {
 
 
 
+
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) {
     console.log("No hay mensajes nuevos en este upsert.");
@@ -307,15 +308,16 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
     try {
       if (msg.audioMessage || msg.pttMessage) {
-        const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.ogg`;
-        audioPath = path.join(__dirname, "../services", audioFilename);
+        const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
+        audioPath = path.join(__dirname, '../audios', audioFilename);
+        await fsp.mkdir(path.dirname(audioPath), { recursive: true });
         await commonFunctions.downloadAudio(webMessage, audioPath);
         console.log("Audio descargado en archivo:", audioPath);
       }
 
       if (msg.imageMessage) {
         const imageFilename = `image_${webMessage.key.id}_${Date.now()}.jpg`;
-        imagePath = path.join(__dirname, "../services", imageFilename);
+        imagePath = path.join(__dirname, '../images', imageFilename);
 
         if (typeof commonFunctions.downloadImage === "function") {
           await commonFunctions.downloadImage(webMessage, imagePath);
