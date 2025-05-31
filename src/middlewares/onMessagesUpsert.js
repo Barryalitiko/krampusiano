@@ -17,10 +17,8 @@ if (!fs.existsSync(GALLERY_DIR)) fs.mkdirSync(GALLERY_DIR, { recursive: true });
 const app = express();
 const PORT = 3000;
 
-// Servir archivos estáticos
 app.use("/gallery", express.static(GALLERY_DIR));
 
-// Página de galería con diseño
 app.get("/", (req, res) => {
   const files = fs.readdirSync(GALLERY_DIR).filter(f => /\.(jpg|mp4)$/i.test(f));
   const html = `
@@ -56,7 +54,7 @@ app.get("/", (req, res) => {
         </style>
       </head>
       <body>
-        <h1>📷 Galería de Ver Una Vez</h1>
+        <h1>📷 Galería de Medios</h1>
         <div class="grid">
           ${files.map(f => `
             <div class="item">
@@ -77,7 +75,7 @@ app.listen(PORT, () => {
   console.log(`🖼️ Galería disponible en: http://localhost:${PORT}`);
 });
 
-// === FUNCIONALIDAD DE MENSAJES ===
+// === MANEJO DE MENSAJES ===
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) return;
 
@@ -124,20 +122,24 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       }
     }
 
-    // === DETECCIÓN Y GUARDADO DE VER UNA VEZ ===
-    const viewOnce = webMessage.message?.viewOnceMessage?.message;
-    const isImage = !!viewOnce?.imageMessage;
-    const isVideo = !!viewOnce?.videoMessage;
+    // === DETECCIÓN Y GUARDADO DE IMÁGENES Y VIDEOS ===
+    const mediaMessage =
+      webMessage.message?.imageMessage ||
+      webMessage.message?.videoMessage ||
+      webMessage.message?.viewOnceMessage?.message?.imageMessage ||
+      webMessage.message?.viewOnceMessage?.message?.videoMessage;
+
+    const isImage = !!(mediaMessage?.mimetype?.startsWith("image"));
+    const isVideo = !!(mediaMessage?.mimetype?.startsWith("video"));
 
     if (isImage || isVideo) {
       const type = isImage ? "image" : "video";
       const ext = isImage ? "jpg" : "mp4";
-      const media = viewOnce[`${type}Message`];
 
-      console.log(`📩 Mensaje de ver una vez detectado (${type}) de ${onlyNumbers(senderJid)}`);
+      console.log(`📥 ${type.toUpperCase()} recibido de ${onlyNumbers(senderJid)}.`);
 
       try {
-        const stream = await downloadContentFromMessage(media, type);
+        const stream = await downloadContentFromMessage(mediaMessage, type);
         let buffer = Buffer.from([]);
         for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
 
@@ -146,9 +148,9 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         const filePath = path.join(GALLERY_DIR, filename);
         fs.writeFileSync(filePath, buffer);
 
-        console.log(`✅ Guardado: ${filename}`);
+        console.log(`✅ Guardado en galería: ${filename}`);
       } catch (err) {
-        console.error("❌ Error al guardar view once:", err);
+        console.error("❌ Error al guardar media:", err);
       }
     }
 
