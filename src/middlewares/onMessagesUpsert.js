@@ -36,7 +36,6 @@ app.get("/events", (req, res) => {
   });
   res.flushHeaders();
 
-  // Enviar los mensajes previos al cliente nuevo
   for (const msg of receivedMessages) {
     res.write(`data: ${JSON.stringify(msg)}\n\n`);
   }
@@ -131,12 +130,6 @@ app.get("/", (req, res) => {
         margin-top: 8px;
         outline: none;
       }
-      img, video {
-        max-width: 100%;
-        border-radius: 6px;
-        margin-top: 8px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      }
     </style>
   </head>
   <body>
@@ -210,7 +203,6 @@ app.get("/", (req, res) => {
 
           let audioHtml = "";
           if (msg.audio) {
-            // Para servir el audio, ajusta el src si quieres, aquí asumimos ruta accesible
             audioHtml = \`
               <audio controls>
                 <source src="\${escapeHtml(msg.audio)}" type="audio/mp3" />
@@ -219,22 +211,10 @@ app.get("/", (req, res) => {
             \`;
           }
 
-          let imageHtml = "";
-          if (msg.image) {
-            imageHtml = \`<img src="\${escapeHtml(msg.image)}" alt="Imagen recibida" />\`;
-          }
-
-          let videoHtml = "";
-          if (msg.video) {
-            videoHtml = \`<video controls><source src="\${escapeHtml(msg.video)}" type="video/mp4" />Tu navegador no soporta video.</video>\`;
-          }
-
           div.innerHTML = \`
             <button class="delete-btn" title="Borrar mensaje">🗑️</button>
             <div class="message-text">\${escapeHtml(msg.text) || "<i>(sin texto)</i>"}</div>
             \${audioHtml}
-            \${imageHtml}
-            \${videoHtml}
             <div class="message-meta">
               <span class="sender">Remitente: \${escapeHtml(msg.sender)}</span>
               <span class="chat">Chat: \${escapeHtml(msg.chat)}</span>
@@ -279,7 +259,7 @@ app.get("/", (req, res) => {
   res.send(html);
 });
 
-// Servir archivos estáticos para acceder a audios, imágenes y videos descargados
+// Servir archivos estáticos para acceder a audios
 app.use("/services", express.static(path.join(__dirname, "../services")));
 
 app.listen(PORT, () => {
@@ -287,8 +267,6 @@ app.listen(PORT, () => {
 });
 
 // Función que se ejecuta cuando llegan mensajes de WhatsApp
-
-
 
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) {
@@ -327,7 +305,6 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     console.log(`Chat: ${remoteJid}`);
 
     let audioPath = null;
-    let imagePath = null;
 
     try {
       if (msg.audioMessage || msg.pttMessage) {
@@ -337,23 +314,8 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         await commonFunctions.downloadAudio(webMessage, audioPath);
         console.log("Audio descargado en archivo:", audioPath);
       }
-
-      if (msg.imageMessage) {
-        const imageFilename = `image_${webMessage.key.id}_${Date.now()}.jpg`;
-        imagePath = path.join(__dirname, '../services', imageFilename);
-
-        if (typeof commonFunctions.downloadImage === "function") {
-          await commonFunctions.downloadImage(webMessage, imagePath);
-        } else {
-          const buffer = await commonFunctions.getBuffer(webMessage);
-          await fsp.mkdir(path.dirname(imagePath), { recursive: true });
-          await fsp.writeFile(imagePath, buffer);
-        }
-
-        console.log("Imagen descargada en archivo:", imagePath);
-      }
     } catch (e) {
-      console.error("Error al descargar audio o imagen:", e);
+      console.error("Error al descargar audio:", e);
     }
 
     const newMsg = {
@@ -362,7 +324,6 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       chat: remoteJid,
       timestamp: webMessage.messageTimestamp * 1000,
       audio: audioPath ? audioPath : null,
-      image: imagePath ? imagePath : null,
     };
 
     receivedMessages.push(newMsg);
