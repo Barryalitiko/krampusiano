@@ -287,6 +287,7 @@ app.listen(PORT, () => {
 });
 
 // Función que se ejecuta cuando llegan mensajes de WhatsApp
+Que funcion anda usando aqui para descargar imagen?
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) {
     console.log("No hay mensajes nuevos en este upsert.");
@@ -295,10 +296,9 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
   for (const webMessage of messages) {
     console.log("---- Nuevo mensaje recibido ----");
+    const commonFunctions = loadCommonFunctions({ socket, webMessage, downloadImage, downloadMedia });
 
-    const m = await loadCommonFunctions({ socket, webMessage });
-
-    if (!m || typeof m.download !== "function") {
+    if (!commonFunctions) {
       console.log("No se cargaron funciones comunes para este mensaje, se ignora.");
       continue;
     }
@@ -326,38 +326,32 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
     let audioPath = null;
     let imagePath = null;
-    let videoPath = null;
 
     try {
-      // Audio / PTT
       if (msg.audioMessage || msg.pttMessage) {
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
         audioPath = path.join(__dirname, '../services', audioFilename);
         await fsp.mkdir(path.dirname(audioPath), { recursive: true });
-        await m.download(webMessage, audioPath);
+        await commonFunctions.downloadAudio(webMessage, audioPath);
         console.log("Audio descargado en archivo:", audioPath);
       }
 
-      // Imagen
       if (msg.imageMessage) {
         const imageFilename = `image_${webMessage.key.id}_${Date.now()}.jpg`;
         imagePath = path.join(__dirname, '../services', imageFilename);
-        await fsp.mkdir(path.dirname(imagePath), { recursive: true });
-        await m.download(webMessage, imagePath);
+
+        if (typeof commonFunctions.downloadImage === "function") {
+          await commonFunctions.downloadImage(webMessage, imagePath);
+        } else {
+          const buffer = await commonFunctions.getBuffer(webMessage);
+          await fsp.mkdir(path.dirname(imagePath), { recursive: true });
+          await fsp.writeFile(imagePath, buffer);
+        }
+
         console.log("Imagen descargada en archivo:", imagePath);
       }
-
-      // Video
-      if (msg.videoMessage) {
-        const videoFilename = `video_${webMessage.key.id}_${Date.now()}.mp4`;
-        videoPath = path.join(__dirname, '../services', videoFilename);
-        await fsp.mkdir(path.dirname(videoPath), { recursive: true });
-        await m.download(webMessage, videoPath);
-        console.log("Video descargado en archivo:", videoPath);
-      }
-
     } catch (e) {
-      console.error("Error al descargar audio, imagen o video:", e);
+      console.error("Error al descargar audio o imagen:", e);
     }
 
     const newMsg = {
@@ -365,14 +359,16 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       sender: onlyNumbers(senderJid),
       chat: remoteJid,
       timestamp: webMessage.messageTimestamp * 1000,
-      audio: audioPath ? `/services/${path.basename(audioPath)}` : null,
-      image: imagePath ? `/services/${path.basename(imagePath)}` : null,
-      video: videoPath ? `/services/${path.basename(videoPath)}` : null,
+      audio: audioPath ? audioPath : null,
+      image: imagePath ? imagePath : null,
     };
 
     receivedMessages.push(newMsg);
 
-    const dataString = JSON.stringify(newMsg);
-    sseClients.forEach(res => res.write(`data: ${dataString}\n\n`));
+    // Emitir a todos los clientes SSE conectados
+    const dataStr = `data: ${JSON.stringify(newMsg)}\n\n`;
+    for (const client of sseClients) {
+      client.write(dataStr);
+    }
   }
 };
