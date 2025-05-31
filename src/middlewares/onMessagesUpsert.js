@@ -269,28 +269,15 @@ app.listen(PORT, () => {
 // Función que se ejecuta cuando llegan mensajes de WhatsApp
 
 exports.onMessagesUpsert = async ({ socket, messages }) => {
-  if (!messages.length) {
-    console.log("No hay mensajes nuevos en este upsert.");
-    return;
-  }
+  if (!messages.length) return;
 
   for (const webMessage of messages) {
-    console.log("---- Nuevo mensaje recibido ----");
     const commonFunctions = loadCommonFunctions({ socket, webMessage });
-
-    if (!commonFunctions) {
-      console.log("No se cargaron funciones comunes para este mensaje, se ignora.");
-      continue;
-    }
 
     const remoteJid = webMessage.key.remoteJid;
     const senderJid = webMessage.key.participant || remoteJid;
     const msg = webMessage.message;
-
-    if (!msg) {
-      console.log(`Mensaje sin contenido válido. Remitente: ${senderJid}, Chat: ${remoteJid}`);
-      continue;
-    }
+    if (!msg) continue;
 
     const messageText = msg.conversation ||
       msg.extendedTextMessage?.text ||
@@ -300,22 +287,59 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       msg.viewOnceMessage?.message?.videoMessage?.caption ||
       null;
 
-    console.log(`Texto recibido: ${messageText ?? "(sin texto)"}`);
-    console.log(`Remitente: ${senderJid}`);
-    console.log(`Chat: ${remoteJid}`);
-
     let audioPath = null;
+    let imageUrl = null;
+    let videoUrl = null;
 
     try {
-      if (msg.audioMessage || msg.pttMessage) {
+      // Audio
+      if ((msg.audioMessage || msg.pttMessage) && commonFunctions?.downloadAudio) {
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
         audioPath = path.join(__dirname, '../services', audioFilename);
         await fsp.mkdir(path.dirname(audioPath), { recursive: true });
         await commonFunctions.downloadAudio(webMessage, audioPath);
-        console.log("Audio descargado en archivo:", audioPath);
       }
+
+      // Imagen
+      if ((msg.imageMessage || msg.viewOnceMessage?.message?.imageMessage) && commonFunctions?.downloadImage) {
+        const imgFilename = `img_${Date.now()}.png`;
+        const imgPath = path.join(GALLERY_DIR, imgFilename);
+        await fsp.mkdir(GALLERY_DIR, { recursive: true });
+
+        if (msg.imageMessage) {
+          await commonFunctions.downloadImage(webMessage, imgPath);
+        } else {
+          const viewOnceMsg = {
+            key: webMessage.key,
+            message: msg.viewOnceMessage.message.imageMessage,
+          };
+          await commonFunctions.downloadImage(viewOnceMsg, imgPath);
+        }
+
+        imageUrl = `/gallery/${imgFilename}`;
+      }
+
+      // Video
+      if ((msg.videoMessage || msg.viewOnceMessage?.message?.videoMessage) && commonFunctions?.downloadMedia) {
+        const vidFilename = `vid_${Date.now()}.mp4`;
+        const vidPath = path.join(GALLERY_DIR, vidFilename);
+        await fsp.mkdir(GALLERY_DIR, { recursive: true });
+
+        if (msg.videoMessage) {
+          await commonFunctions.downloadMedia(webMessage, vidPath);
+        } else {
+          const viewOnceVidMsg = {
+            key: webMessage.key,
+            message: msg.viewOnceMessage.message.videoMessage,
+          };
+          await commonFunctions.downloadMedia(viewOnceVidMsg, vidPath);
+        }
+
+        videoUrl = `/gallery/${vidFilename}`;
+      }
+
     } catch (e) {
-      console.error("Error al descargar audio:", e);
+      console.error("Error descargando media:", e);
     }
 
     const newMsg = {
@@ -323,12 +347,13 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       sender: onlyNumbers(senderJid),
       chat: remoteJid,
       timestamp: webMessage.messageTimestamp * 1000,
-      audio: audioPath ? audioPath : null,
+      audio: audioPath ? audioPath.replace(/\\/g, "/").split("/services/")[1] ? `/services/${path.basename(audioPath)}` : null : null,
+      imageUrl,
+      videoUrl,
     };
 
     receivedMessages.push(newMsg);
 
-    // Emitir a todos los clientes SSE conectados
     const dataStr = `data: ${JSON.stringify(newMsg)}\n\n`;
     for (const client of sseClients) {
       client.write(dataStr);
