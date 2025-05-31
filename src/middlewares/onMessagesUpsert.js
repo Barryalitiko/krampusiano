@@ -6,10 +6,11 @@ const { onlyNumbers } = require("../utils");
 const app = express();
 const PORT = 3000;
 
-// Array para almacenar mensajes recibidos
 const receivedMessages = [];
 
-// Función para escapar HTML y evitar inyección
+// Aquí guardamos los clientes conectados SSE
+const sseClients = [];
+
 function escapeHtml(text) {
   if (!text) return "";
   return text.replace(/[&<>"']/g, (m) => {
@@ -24,7 +25,29 @@ function escapeHtml(text) {
   });
 }
 
-// Servir página principal con mensajes
+// Ruta SSE para enviar mensajes en vivo
+app.get("/events", (req, res) => {
+  res.set({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+  res.flushHeaders();
+
+  // Enviar los mensajes previos al cliente nuevo
+  for (const msg of receivedMessages) {
+    res.write(`data: ${JSON.stringify(msg)}\n\n`);
+  }
+
+  sseClients.push(res);
+
+  // Cuando el cliente se desconecte lo quitamos
+  req.on("close", () => {
+    const index = sseClients.indexOf(res);
+    if (index !== -1) sseClients.splice(index, 1);
+  });
+});
+
 app.get("/", (req, res) => {
   const html = `
   <html>
@@ -91,7 +114,7 @@ app.get("/", (req, res) => {
     </head>
     <body>
       <h1>💬 Mensajes recibidos</h1>
-      <div class="container">
+      <div class="container" id="messagesContainer">
         ${
           receivedMessages.length === 0
             ? `<p style="text-align:center; color:#999;">No hay mensajes aún</p>`
@@ -106,18 +129,56 @@ app.get("/", (req, res) => {
             `).join("")
         }
       </div>
+
+      <script>
+        const container = document.getElementById("messagesContainer");
+
+        // Función para escapar HTML en cliente
+        function escapeHtml(text) {
+          if (!text) return "";
+          return text.replace(/[&<>"']/g, (m) => {
+            switch (m) {
+              case "&": return "&amp;";
+              case "<": return "&lt;";
+              case ">": return "&gt;";
+              case '"': return "&quot;";
+              case "'": return "&#039;";
+              default: return m;
+            }
+          });
+        }
+
+        const evtSource = new EventSource("/events");
+        evtSource.onmessage = function(event) {
+          const msg = JSON.parse(event.data);
+
+          // Crear nuevo div mensaje
+          const div = document.createElement("div");
+          div.classList.add("message-card");
+
+          div.innerHTML = \`
+            <div class="message-text">\${escapeHtml(msg.text) || "<i>(sin texto)</i>"}</div>
+            <div class="message-meta">
+              <span class="sender">Remitente: \${escapeHtml(msg.sender)}</span>
+              <span class="chat">Chat: \${escapeHtml(msg.chat)}</span>
+            </div>
+          \`;
+
+          container.appendChild(div);
+          // Scroll automático al final
+          container.scrollTop = container.scrollHeight;
+        };
+      </script>
     </body>
   </html>
   `;
   res.send(html);
 });
 
-// Iniciar servidor Express
 app.listen(PORT, () => {
   console.log(`🌐 Web de mensajes disponible en http://localhost:${PORT}`);
 });
 
-// Manejador principal de mensajes
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) {
     console.log("No hay mensajes nuevos en este upsert.");
@@ -155,14 +216,19 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     console.log(`Remitente: ${senderJid}`);
     console.log(`Chat: ${remoteJid}`);
 
-    // Guardar en array para mostrar en web
-    receivedMessages.push({
+    const newMsg = {
       text: messageText,
       sender: onlyNumbers(senderJid),
       chat: remoteJid,
-    });
+    };
 
-    // Limitar máximo 1000 mensajes para no saturar memoria
+    receivedMessages.push(newMsg);
+
+    // Enviar nuevo mensaje a todos clientes SSE conectados
+    for (const client of sseClients) {
+      client.write(`data: ${JSON.stringify(newMsg)}\n\n`);
+    }
+
     if (receivedMessages.length > 1000) receivedMessages.shift();
 
     await dynamicCommand(commonFunctions);
