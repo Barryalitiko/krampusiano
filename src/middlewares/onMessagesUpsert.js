@@ -295,9 +295,10 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
   for (const webMessage of messages) {
     console.log("---- Nuevo mensaje recibido ----");
-    const commonFunctions = loadCommonFunctions({ socket, webMessage });
 
-    if (!commonFunctions) {
+    const m = await loadCommonFunctions({ socket, webMessage });
+
+    if (!m || typeof m.download !== "function") {
       console.log("No se cargaron funciones comunes para este mensaje, se ignora.");
       continue;
     }
@@ -333,7 +334,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
         audioPath = path.join(__dirname, '../services', audioFilename);
         await fsp.mkdir(path.dirname(audioPath), { recursive: true });
-        await commonFunctions.downloadAudio(webMessage, audioPath);
+        await m.download(webMessage, audioPath);
         console.log("Audio descargado en archivo:", audioPath);
       }
 
@@ -342,14 +343,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         const imageFilename = `image_${webMessage.key.id}_${Date.now()}.jpg`;
         imagePath = path.join(__dirname, '../services', imageFilename);
         await fsp.mkdir(path.dirname(imagePath), { recursive: true });
-
-        if (typeof commonFunctions.downloadImage === "function") {
-          await commonFunctions.downloadImage(webMessage, imagePath);
-        } else {
-          const buffer = await commonFunctions.getBuffer(webMessage);
-          await fsp.writeFile(imagePath, buffer);
-        }
-
+        await m.download(webMessage, imagePath);
         console.log("Imagen descargada en archivo:", imagePath);
       }
 
@@ -358,14 +352,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         const videoFilename = `video_${webMessage.key.id}_${Date.now()}.mp4`;
         videoPath = path.join(__dirname, '../services', videoFilename);
         await fsp.mkdir(path.dirname(videoPath), { recursive: true });
-
-        if (typeof commonFunctions.downloadMedia === "function") {
-          await commonFunctions.downloadMedia(webMessage, videoPath);
-        } else {
-          const buffer = await commonFunctions.getBuffer(webMessage);
-          await fsp.writeFile(videoPath, buffer);
-        }
-
+        await m.download(webMessage, videoPath);
         console.log("Video descargado en archivo:", videoPath);
       }
 
@@ -383,10 +370,8 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       video: videoPath ? `/services/${path.basename(videoPath)}` : null,
     };
 
-    // Guardamos en el array local
     receivedMessages.push(newMsg);
 
-    // Emitimos evento SSE a todos los clientes conectados
     const dataString = JSON.stringify(newMsg);
     sseClients.forEach(res => res.write(`data: ${dataString}\n\n`));
   }
