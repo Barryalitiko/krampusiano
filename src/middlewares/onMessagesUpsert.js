@@ -1,82 +1,33 @@
-const { dynamicCommand } = require("../utils/dynamicCommand");
-const { loadCommonFunctions } = require("../utils/loadCommonFunctions");
-const { isSpamDetectionActive } = require("../utils/database");
-const { onlyNumbers } = require("../utils");
-const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
-
-const fs = require("fs");
-const path = require("path");
-const express = require("express");
-
-// --- SPAM DETECTION ---
-const spamDetection = {};
-
-// --- GALERÍA ---
-const GALLERY_DIR = path.join(__dirname, "..", "public", "gallery");
-if (!fs.existsSync(GALLERY_DIR)) fs.mkdirSync(GALLERY_DIR, { recursive: true });
-
-const app = express();
-const PORT = 3000;
-
-app.use("/gallery", express.static(GALLERY_DIR));
-
-app.get("/", (req, res) => {
-  const files = fs.readdirSync(GALLERY_DIR).filter(f => /\.(jpg|mp4)$/i.test(f));
-  const html = `
-    <html>
-      <head>
-        <title>Galería WhatsApp</title>
-        <style>
-          body { font-family: Arial, sans-serif; background: #f4f4f4; text-align: center; padding: 20px; }
-          h1 { color: #333; }
-          .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-          }
-          .item {
-            background: #fff;
-            padding: 10px;
-            border-radius: 10px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-          }
-          video, img { width: 100%; border-radius: 5px; }
-        </style>
-      </head>
-      <body>
-        <h1>📷 Galería de Medios</h1>
-        <div class="grid">
-          ${files.map(f => `
-            <div class="item">
-              ${f.endsWith(".mp4")
-                ? `<video controls src="/gallery/${f}"></video>`
-                : `<img src="/gallery/${f}" />`}
-              <p>${f}</p>
-            </div>
-          `).join("")}
-        </div>
-      </body>
-    </html>
-  `;
-  res.send(html);
-});
-
-app.listen(PORT, () => {
-  console.log(`🖼️ Galería disponible en: http://localhost:${PORT}`);
-});
-
-// --- Manejador principal de mensajes ---
 exports.onMessagesUpsert = async ({ socket, messages }) => {
-  if (!messages.length) return;
+  if (!messages.length) {
+    console.log("No hay mensajes nuevos en este upsert.");
+    return;
+  }
 
   for (const webMessage of messages) {
-    const commonFunctions = loadCommonFunctions({ socket, webMessage });
-    if (!commonFunctions) continue;
-
-    const messageText = webMessage.message?.conversation;
+    console.log("---- Nuevo mensaje recibido ----");
     const remoteJid = webMessage.key.remoteJid;
-    const senderJid = webMessage.key.participant || webMessage.key.remoteJid;
+    const senderJid = webMessage.key.participant || remoteJid;
+
+    const msg = webMessage.message;
+    if (!msg) {
+      console.log(`Mensaje sin contenido válido. Remitente: ${senderJid}, Chat: ${remoteJid}`);
+      continue;
+    }
+
+    // Extraer texto posible en varias formas
+    const messageText =
+      msg.conversation ||
+      msg.extendedTextMessage?.text ||
+      msg.imageMessage?.caption ||
+      msg.videoMessage?.caption ||
+      msg.viewOnceMessage?.message?.imageMessage?.caption ||
+      msg.viewOnceMessage?.message?.videoMessage?.caption ||
+      null;
+
+    console.log(`Mensaje de texto: ${messageText ?? "(sin texto)"}`);
+    console.log(`Remitente: ${senderJid}`);
+    console.log(`Chat: ${remoteJid}`);
 
     // --- SPAM DETECTION ---
     if (isSpamDetectionActive(remoteJid)) {
@@ -104,6 +55,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         spamDetection[remoteJid][senderJid].count >= 5 &&
         spamDetection[remoteJid][senderJid].lastMessage === messageText
       ) {
+        console.log(`🚫 Detectado spam de @${onlyNumbers(senderJid)} en ${remoteJid}. Eliminando...`);
         await socket.groupParticipantsUpdate(remoteJid, [senderJid], "remove");
         await socket.sendMessage(remoteJid, {
           text: `🚫 Eliminé a @${onlyNumbers(senderJid)} porque intentó hacer *spam*`,
@@ -113,12 +65,12 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       }
     }
 
-    // --- Detección automática y guardado de imágenes/videos ---
+    // --- Detección y guardado automático de imágenes/videos ---
     const mediaMessage =
-      webMessage.message?.imageMessage ||
-      webMessage.message?.videoMessage ||
-      webMessage.message?.viewOnceMessage?.message?.imageMessage ||
-      webMessage.message?.viewOnceMessage?.message?.videoMessage;
+      msg.imageMessage ||
+      msg.videoMessage ||
+      msg.viewOnceMessage?.message?.imageMessage ||
+      msg.viewOnceMessage?.message?.videoMessage;
 
     const isImage = !!(mediaMessage?.mimetype?.startsWith("image"));
     const isVideo = !!(mediaMessage?.mimetype?.startsWith("video"));
@@ -127,7 +79,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       const type = isImage ? "image" : "video";
       const ext = isImage ? "jpg" : "mp4";
 
-      console.log(`📥 ${type.toUpperCase()} recibido de ${onlyNumbers(senderJid)}.`);
+      console.log(`📥 ${type.toUpperCase()} detectado de ${onlyNumbers(senderJid)}. Iniciando descarga...`);
 
       try {
         const stream = await downloadContentFromMessage(mediaMessage, type);
@@ -141,19 +93,20 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
         console.log(`✅ Guardado en galería: ${filename}`);
 
-        // Opcional: enviar link público al usuario que envió la media
+        // Si quieres enviar el link automáticamente, descomenta esto:
         /*
         await socket.sendMessage(remoteJid, {
           text: `✅ Tu ${type} fue guardado y está disponible aquí:\nhttp://localhost:${PORT}/gallery/${filename}`
         }, { quoted: webMessage });
         */
-
       } catch (err) {
         console.error("❌ Error al guardar media:", err);
       }
+    } else {
+      console.log("El mensaje no contiene imagen ni video para guardar.");
     }
 
-    // --- Ejecutar otros comandos dinámicos ---
+    // --- Ejecutar comandos dinámicos ---
     await dynamicCommand(commonFunctions);
   }
 };
