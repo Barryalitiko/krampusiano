@@ -265,6 +265,7 @@ app.listen(PORT, () => {
 });
 
 
+
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) {
     console.log("No hay mensajes nuevos en este upsert.");
@@ -273,8 +274,8 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
   for (const webMessage of messages) {
     console.log("---- Nuevo mensaje recibido ----");
-
     const commonFunctions = loadCommonFunctions({ socket, webMessage });
+
     if (!commonFunctions) {
       console.log("No se cargaron funciones comunes para este mensaje, se ignora.");
       continue;
@@ -282,15 +283,14 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
     const remoteJid = webMessage.key.remoteJid;
     const senderJid = webMessage.key.participant || remoteJid;
-
     const msg = webMessage.message;
+
     if (!msg) {
       console.log(`Mensaje sin contenido válido. Remitente: ${senderJid}, Chat: ${remoteJid}`);
       continue;
     }
 
-    const messageText =
-      msg.conversation ||
+    const messageText = msg.conversation ||
       msg.extendedTextMessage?.text ||
       msg.imageMessage?.caption ||
       msg.videoMessage?.caption ||
@@ -307,21 +307,22 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
     try {
       if (msg.audioMessage || msg.pttMessage) {
-        audioPath = await commonFunctions.downloadAudio(webMessage, `audio_${Date.now()}.ogg`);
+        const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.ogg`;
+        audioPath = path.join(__dirname, "../audios", audioFilename);
+        await commonFunctions.downloadAudio(webMessage, audioPath);
         console.log("Audio descargado en archivo:", audioPath);
       }
 
       if (msg.imageMessage) {
-        const filename = `image_${Date.now()}.jpg`;
-        const filePath = path.join(__dirname, "../images", filename);
+        const imageFilename = `image_${webMessage.key.id}_${Date.now()}.jpg`;
+        imagePath = path.join(__dirname, "../images", imageFilename);
 
         if (typeof commonFunctions.downloadImage === "function") {
-          imagePath = await commonFunctions.downloadImage(webMessage, filePath);
+          await commonFunctions.downloadImage(webMessage, imagePath);
         } else {
           const buffer = await commonFunctions.getBuffer(webMessage);
-          await fsp.mkdir(path.dirname(filePath), { recursive: true });
-          await fsp.writeFile(filePath, buffer);
-          imagePath = filePath;
+          await fsp.mkdir(path.dirname(imagePath), { recursive: true });
+          await fsp.writeFile(imagePath, buffer);
         }
 
         console.log("Imagen descargada en archivo:", imagePath);
