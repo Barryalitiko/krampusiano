@@ -206,7 +206,7 @@ app.get("/", (req, res) => {
           if (msg.audio) {
             audioHtml = \`
               <audio controls>
-                <source src="\${msg.audio}" type="audio/ogg" />
+                <source src="\${msg.audio}" type="audio/mp3" />
                 Tu navegador no soporta la reproducción de audio.
               </audio>
             \`;
