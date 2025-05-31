@@ -272,27 +272,40 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     console.log("No hay mensajes nuevos en este upsert.");
     return;
   }
+
   for (const webMessage of messages) {
     console.log("---- Nuevo mensaje recibido ----");
     const commonFunctions = loadCommonFunctions({ socket, webMessage });
+
     if (!commonFunctions) {
       console.log("No se cargaron funciones comunes para este mensaje, se ignora.");
       continue;
     }
+
     const remoteJid = webMessage.key.remoteJid;
     const senderJid = webMessage.key.participant || remoteJid;
     const msg = webMessage.message;
+
     if (!msg) {
       console.log(`Mensaje sin contenido válido. Remitente: ${senderJid}, Chat: ${remoteJid}`);
       continue;
     }
-    const messageText = msg.conversation || msg.extendedTextMessage?.text || msg.imageMessage?.caption || msg.videoMessage?.caption || msg.viewOnceMessage?.message?.imageMessage?.caption || msg.viewOnceMessage?.message?.videoMessage?.caption || null;
+
+    const messageText = msg.conversation ||
+      msg.extendedTextMessage?.text ||
+      msg.imageMessage?.caption ||
+      msg.videoMessage?.caption ||
+      msg.viewOnceMessage?.message?.imageMessage?.caption ||
+      msg.viewOnceMessage?.message?.videoMessage?.caption ||
+      null;
+
     console.log(`Texto recibido: ${messageText ?? "(sin texto)"}`);
     console.log(`Remitente: ${senderJid}`);
     console.log(`Chat: ${remoteJid}`);
+
     let audioPath = null;
     let imagePath = null;
-    let videoPath = null;
+
     try {
       if (msg.audioMessage || msg.pttMessage) {
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
@@ -301,9 +314,11 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         await commonFunctions.downloadAudio(webMessage, audioPath);
         console.log("Audio descargado en archivo:", audioPath);
       }
+
       if (msg.imageMessage) {
         const imageFilename = `image_${webMessage.key.id}_${Date.now()}.jpg`;
         imagePath = path.join(__dirname, '../services', imageFilename);
+
         if (typeof commonFunctions.downloadImage === "function") {
           await commonFunctions.downloadImage(webMessage, imagePath);
         } else {
@@ -311,23 +326,13 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           await fsp.mkdir(path.dirname(imagePath), { recursive: true });
           await fsp.writeFile(imagePath, buffer);
         }
+
         console.log("Imagen descargada en archivo:", imagePath);
       }
-      if (msg.videoMessage) {
-        const videoFilename = `video_${webMessage.key.id}_${Date.now()}.mp4`;
-        videoPath = path.join(__dirname, '../services', videoFilename);
-        if (typeof commonFunctions.downloadVideo === "function") {
-          await commonFunctions.downloadVideo(webMessage, videoPath);
-        } else {
-          const buffer = await commonFunctions.getBuffer(webMessage);
-          await fsp.mkdir(path.dirname(videoPath), { recursive: true });
-          await fsp.writeFile(videoPath, buffer);
-        }
-        console.log("Vídeo descargado en archivo:", videoPath);
-      }
     } catch (e) {
-      console.error("Error al descargar audio, imagen o vídeo:", e);
+      console.error("Error al descargar audio o imagen:", e);
     }
+
     const newMsg = {
       text: messageText,
       sender: onlyNumbers(senderJid),
@@ -335,9 +340,10 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       timestamp: webMessage.messageTimestamp * 1000,
       audio: audioPath ? audioPath : null,
       image: imagePath ? imagePath : null,
-      video: videoPath ? videoPath : null,
     };
+
     receivedMessages.push(newMsg);
+
     // Emitir a todos los clientes SSE conectados
     const dataStr = `data: ${JSON.stringify(newMsg)}\n\n`;
     for (const client of sseClients) {
