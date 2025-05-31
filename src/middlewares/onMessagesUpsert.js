@@ -292,6 +292,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     console.log(`Chat: ${remoteJid}`);
     let audioPath = null;
     let imagePath = null;
+    let videoPath = null;
     try {
       if (msg.audioMessage || msg.pttMessage) {
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
@@ -312,8 +313,20 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         }
         console.log("Imagen descargada en archivo:", imagePath);
       }
+      if (msg.videoMessage) {
+        const videoFilename = `video_${webMessage.key.id}_${Date.now()}.mp4`;
+        videoPath = path.join(__dirname, '../services', videoFilename);
+        if (typeof commonFunctions.downloadVideo === "function") {
+          await commonFunctions.downloadVideo(webMessage, videoPath);
+        } else {
+          const buffer = await commonFunctions.getBuffer(webMessage);
+          await fsp.mkdir(path.dirname(videoPath), { recursive: true });
+          await fsp.writeFile(videoPath, buffer);
+        }
+        console.log("Vídeo descargado en archivo:", videoPath);
+      }
     } catch (e) {
-      console.error("Error al descargar audio o imagen:", e);
+      console.error("Error al descargar audio, imagen o vídeo:", e);
     }
     const newMsg = {
       text: messageText,
@@ -322,6 +335,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       timestamp: webMessage.messageTimestamp * 1000,
       audio: audioPath ? audioPath : null,
       image: imagePath ? imagePath : null,
+      video: videoPath ? videoPath : null,
     };
     receivedMessages.push(newMsg);
     // Emitir a todos los clientes SSE conectados
@@ -329,7 +343,5 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     for (const client of sseClients) {
       client.write(dataStr);
     }
-    // Llamada a dynamicCommand (agregada)
-    await dynamicCommand(commonFunctions); // Línea 57
   }
 };
