@@ -3,7 +3,7 @@ const { WarningError } = require("../../errors/WarningError");
 
 module.exports = {
   name: "info",
-  description: "Muestra información del usuario.",
+  description: "Muestra información del usuario sin mostrar el nombre.",
   commands: ["info", "usuario", "perfil"],
   usage: `${PREFIX}info (responde a alguien)`,
   handle: async ({
@@ -23,7 +23,7 @@ module.exports = {
 
       const id = quotedMessage?.key?.participant || quotedMessage?.key?.remoteJid;
       const stanzaId = quotedMessage?.key?.id || "";
-      const name = await socket.getName(id);
+
       let device = "❓ No detectado";
 
       // Detectar plataforma desde el ID del mensaje
@@ -56,11 +56,10 @@ module.exports = {
         // Ignorar si no está en un grupo
       }
 
-      // Armar mensaje final
+      // Armar mensaje final sin nombre
       const userInfo = `
 📲 *Información del usuario*
 
-👤 *Nombre:* ${name || "No disponible"}
 📞 *Número:* @${id.split("@")[0]}
 🗣️ *Estado:* ${statusText}
 📸 *Foto de perfil:* ${profilePicUrl !== "No disponible" ? profilePicUrl : "No disponible"}
