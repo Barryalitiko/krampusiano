@@ -4,7 +4,7 @@ module.exports = {
   name: "fakestatus",
   description: "Simula que el bot está grabando audio y luego envía un chiste.",
   commands: ["fakestatus", "fakemic", "joke"],
-  usage: `${PREFIX}fakestatus`,
+  usage: `${PREFIX}chiste`,
   handle: async ({
     socket,
     remoteJid,
