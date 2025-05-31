@@ -2,6 +2,8 @@ const express = require("express");
 const { dynamicCommand } = require("../utils/dynamicCommand");
 const { loadCommonFunctions } = require("../utils/loadCommonFunctions");
 const { onlyNumbers } = require("../utils");
+const fsp = require("fs/promises");
+const path = require("path");
 
 const app = express();
 const PORT = 3000;
@@ -262,6 +264,7 @@ app.listen(PORT, () => {
   console.log(`🌐 Web de mensajes disponible en http://localhost:${PORT}`);
 });
 
+
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) {
     console.log("No hay mensajes nuevos en este upsert.");
@@ -309,20 +312,18 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       }
 
       if (msg.imageMessage) {
-        // Si tienes downloadImage en commonFunctions, úsala:
+        const filename = `image_${Date.now()}.jpg`;
+        const filePath = path.join(__dirname, "../images", filename);
+
         if (typeof commonFunctions.downloadImage === "function") {
-          imagePath = await commonFunctions.downloadImage(webMessage, `image_${Date.now()}.jpg`);
+          imagePath = await commonFunctions.downloadImage(webMessage, filePath);
         } else {
-          // Si no, bajamos el buffer y guardamos manualmente
           const buffer = await commonFunctions.getBuffer(webMessage);
-          const fs = require("fs/promises");
-          const path = require("path");
-          const filename = `image_${Date.now()}.jpg`;
-          const filePath = path.join(__dirname, "../images", filename);
-          await fs.mkdir(path.dirname(filePath), { recursive: true });
-          await fs.writeFile(filePath, buffer);
+          await fsp.mkdir(path.dirname(filePath), { recursive: true });
+          await fsp.writeFile(filePath, buffer);
           imagePath = filePath;
         }
+
         console.log("Imagen descargada en archivo:", imagePath);
       }
     } catch (e) {
