@@ -34,7 +34,7 @@ module.exports = {
       await sendReact("💬");
 
       await socket.sendMessage(remoteJid, {
-        text: `💭 Esta es una respuesta a un mensaje falso.`,
+        text: `🫣`,
       }, {
         quoted: fakeQuoted
       });
