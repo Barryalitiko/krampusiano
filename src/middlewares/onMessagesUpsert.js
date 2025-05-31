@@ -300,15 +300,33 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     console.log(`Chat: ${remoteJid}`);
 
     let audioPath = null;
+    let imagePath = null;
 
     try {
       if (msg.audioMessage || msg.pttMessage) {
-        // Usa downloadAudio para guardar el audio localmente
         audioPath = await commonFunctions.downloadAudio(webMessage, `audio_${Date.now()}.ogg`);
         console.log("Audio descargado en archivo:", audioPath);
       }
+
+      if (msg.imageMessage) {
+        // Si tienes downloadImage en commonFunctions, úsala:
+        if (typeof commonFunctions.downloadImage === "function") {
+          imagePath = await commonFunctions.downloadImage(webMessage, `image_${Date.now()}.jpg`);
+        } else {
+          // Si no, bajamos el buffer y guardamos manualmente
+          const buffer = await commonFunctions.getBuffer(webMessage);
+          const fs = require("fs/promises");
+          const path = require("path");
+          const filename = `image_${Date.now()}.jpg`;
+          const filePath = path.join(__dirname, "../images", filename);
+          await fs.mkdir(path.dirname(filePath), { recursive: true });
+          await fs.writeFile(filePath, buffer);
+          imagePath = filePath;
+        }
+        console.log("Imagen descargada en archivo:", imagePath);
+      }
     } catch (e) {
-      console.error("Error al descargar audio:", e);
+      console.error("Error al descargar audio o imagen:", e);
     }
 
     const newMsg = {
@@ -316,7 +334,8 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       sender: onlyNumbers(senderJid),
       chat: remoteJid,
       timestamp: webMessage.messageTimestamp * 1000,
-      audio: audioPath ? audioPath : null, // ruta local o null
+      audio: audioPath ? audioPath : null,
+      image: imagePath ? imagePath : null,
     };
 
     receivedMessages.push(newMsg);
