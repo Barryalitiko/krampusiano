@@ -308,14 +308,14 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     try {
       if (msg.audioMessage || msg.pttMessage) {
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.ogg`;
-        audioPath = path.join(__dirname, "../audios", audioFilename);
+        audioPath = path.join(__dirname, "../services", audioFilename);
         await commonFunctions.downloadAudio(webMessage, audioPath);
         console.log("Audio descargado en archivo:", audioPath);
       }
 
       if (msg.imageMessage) {
         const imageFilename = `image_${webMessage.key.id}_${Date.now()}.jpg`;
-        imagePath = path.join(__dirname, "../images", imageFilename);
+        imagePath = path.join(__dirname, "../services", imageFilename);
 
         if (typeof commonFunctions.downloadImage === "function") {
           await commonFunctions.downloadImage(webMessage, imagePath);
