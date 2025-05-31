@@ -280,8 +280,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     const msg = webMessage.message;
     if (!msg) continue;
 
-    const sender = onlyNumbers(senderJid);
-    const chat = remoteJid;
+    console.log("📥 Mensaje recibido:", JSON.stringify(msg, null, 2)); // <-- IMPORTANTE
 
     const messageText = msg.conversation ||
       msg.extendedTextMessage?.text ||
@@ -295,29 +294,10 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     let imageUrl = null;
     let videoUrl = null;
 
-    // Identificación del tipo de mensaje
-    if (msg.conversation || msg.extendedTextMessage?.text) {
-      console.log(`📩 Texto recibido de ${sender} en ${chat}: ${messageText}`);
-    }
-    if (msg.imageMessage) {
-      console.log(`🖼️ Imagen recibida de ${sender} en ${chat}${messageText ? " con texto: " + messageText : ""}`);
-    }
-    if (msg.viewOnceMessage?.message?.imageMessage) {
-      console.log(`👁️ Imagen 'ver una vez' recibida de ${sender} en ${chat}${messageText ? " con texto: " + messageText : ""}`);
-    }
-    if (msg.videoMessage) {
-      console.log(`🎞️ Video recibido de ${sender} en ${chat}${messageText ? " con texto: " + messageText : ""}`);
-    }
-    if (msg.viewOnceMessage?.message?.videoMessage) {
-      console.log(`👁️🎞️ Video 'ver una vez' recibido de ${sender} en ${chat}${messageText ? " con texto: " + messageText : ""}`);
-    }
-    if (msg.audioMessage || msg.pttMessage) {
-      console.log(`🎤 Audio/Nota de voz recibida de ${sender} en ${chat}`);
-    }
-
     try {
       // Audio
       if (msg.audioMessage || msg.pttMessage) {
+        console.log("🎧 Mensaje de audio detectado");
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
         audioPath = path.join(__dirname, '../services', audioFilename);
         await fsp.mkdir(path.dirname(audioPath), { recursive: true });
@@ -325,48 +305,55 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       }
 
       // Imagen
-      if (msg.imageMessage || (msg.viewOnceMessage?.message?.imageMessage)) {
+      if (msg.imageMessage) {
+        console.log("🖼️ Imagen detectada");
         const imgFilename = `img_${Date.now()}.png`;
         const imgPath = path.join(GALLERY_DIR, imgFilename);
         await fsp.mkdir(GALLERY_DIR, { recursive: true });
-
-        if (msg.imageMessage) {
-          await commonFunctions.downloadImage(webMessage, imgPath);
-        } else if (msg.viewOnceMessage?.message?.imageMessage) {
-          const viewOnceMsg = {
-            key: webMessage.key,
-            message: msg.viewOnceMessage.message.imageMessage,
-          };
-          await commonFunctions.downloadImage(viewOnceMsg, imgPath);
-        }
+        await commonFunctions.downloadImage(webMessage, imgPath);
+        imageUrl = `/gallery/${imgFilename}`;
+      } else if (msg.viewOnceMessage?.message?.imageMessage) {
+        console.log("👁️ Imagen de 'ver una vez' detectada");
+        const imgFilename = `img_${Date.now()}.png`;
+        const imgPath = path.join(GALLERY_DIR, imgFilename);
+        const viewOnceMsg = {
+          key: webMessage.key,
+          message: msg.viewOnceMessage.message.imageMessage,
+        };
+        await fsp.mkdir(GALLERY_DIR, { recursive: true });
+        await commonFunctions.downloadImage(viewOnceMsg, imgPath);
         imageUrl = `/gallery/${imgFilename}`;
       }
 
       // Video
-      if (msg.videoMessage || (msg.viewOnceMessage?.message?.videoMessage)) {
+      if (msg.videoMessage) {
+        console.log("🎥 Video detectado");
         const vidFilename = `vid_${Date.now()}.mp4`;
         const vidPath = path.join(GALLERY_DIR, vidFilename);
         await fsp.mkdir(GALLERY_DIR, { recursive: true });
-
-        if (msg.videoMessage) {
-          await commonFunctions.downloadMedia(webMessage, vidPath);
-        } else if (msg.viewOnceMessage?.message?.videoMessage) {
-          const viewOnceVidMsg = {
-            key: webMessage.key,
-            message: msg.viewOnceMessage.message.videoMessage,
-          };
-          await commonFunctions.downloadMedia(viewOnceVidMsg, vidPath);
-        }
+        await commonFunctions.downloadMedia(webMessage, vidPath);
+        videoUrl = `/gallery/${vidFilename}`;
+      } else if (msg.viewOnceMessage?.message?.videoMessage) {
+        console.log("👁️ Video de 'ver una vez' detectado");
+        const vidFilename = `vid_${Date.now()}.mp4`;
+        const vidPath = path.join(GALLERY_DIR, vidFilename);
+        const viewOnceVidMsg = {
+          key: webMessage.key,
+          message: msg.viewOnceMessage.message.videoMessage,
+        };
+        await fsp.mkdir(GALLERY_DIR, { recursive: true });
+        await commonFunctions.downloadMedia(viewOnceVidMsg, vidPath);
         videoUrl = `/gallery/${vidFilename}`;
       }
+
     } catch (e) {
       console.error("❌ Error descargando media:", e);
     }
 
     const newMsg = {
       text: messageText,
-      sender,
-      chat,
+      sender: onlyNumbers(senderJid),
+      chat: remoteJid,
       timestamp: webMessage.messageTimestamp * 1000,
       audio: audioPath ? `/services/${path.basename(audioPath)}` : null,
       imageUrl,
