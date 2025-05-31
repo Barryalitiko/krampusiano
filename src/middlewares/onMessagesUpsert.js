@@ -49,6 +49,7 @@ app.get("/events", (req, res) => {
   });
 });
 
+// Ruta principal con interfaz web para mensajes
 app.get("/", (req, res) => {
   const html = `
   <!DOCTYPE html>
@@ -57,7 +58,6 @@ app.get("/", (req, res) => {
     <meta charset="UTF-8" />
     <title>💬 Mensajes WhatsApp Bot</title>
     <style>
-      /* (Tu CSS intacto, omitido aquí para brevedad) */
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         background: #f0f2f5;
@@ -130,6 +130,12 @@ app.get("/", (req, res) => {
         width: 100%;
         margin-top: 8px;
         outline: none;
+      }
+      img, video {
+        max-width: 100%;
+        border-radius: 6px;
+        margin-top: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       }
     </style>
   </head>
@@ -204,18 +210,31 @@ app.get("/", (req, res) => {
 
           let audioHtml = "";
           if (msg.audio) {
+            // Para servir el audio, ajusta el src si quieres, aquí asumimos ruta accesible
             audioHtml = \`
               <audio controls>
-                <source src="\${msg.audio}" type="audio/mp3" />
+                <source src="\${escapeHtml(msg.audio)}" type="audio/mp3" />
                 Tu navegador no soporta la reproducción de audio.
               </audio>
             \`;
+          }
+
+          let imageHtml = "";
+          if (msg.image) {
+            imageHtml = \`<img src="\${escapeHtml(msg.image)}" alt="Imagen recibida" />\`;
+          }
+
+          let videoHtml = "";
+          if (msg.video) {
+            videoHtml = \`<video controls><source src="\${escapeHtml(msg.video)}" type="video/mp4" />Tu navegador no soporta video.</video>\`;
           }
 
           div.innerHTML = \`
             <button class="delete-btn" title="Borrar mensaje">🗑️</button>
             <div class="message-text">\${escapeHtml(msg.text) || "<i>(sin texto)</i>"}</div>
             \${audioHtml}
+            \${imageHtml}
+            \${videoHtml}
             <div class="message-meta">
               <span class="sender">Remitente: \${escapeHtml(msg.sender)}</span>
               <span class="chat">Chat: \${escapeHtml(msg.chat)}</span>
@@ -260,13 +279,14 @@ app.get("/", (req, res) => {
   res.send(html);
 });
 
+// Servir archivos estáticos para acceder a audios, imágenes y videos descargados
+app.use("/services", express.static(path.join(__dirname, "../services")));
+
 app.listen(PORT, () => {
   console.log(`🌐 Web de mensajes disponible en http://localhost:${PORT}`);
 });
 
-
-
-
+// Función que se ejecuta cuando llegan mensajes de WhatsApp
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) {
     console.log("No hay mensajes nuevos en este upsert.");
@@ -358,17 +378,16 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       sender: onlyNumbers(senderJid),
       chat: remoteJid,
       timestamp: webMessage.messageTimestamp * 1000,
-      audio: audioPath,
-      image: imagePath,
-      video: videoPath,
+      audio: audioPath ? `/services/${path.basename(audioPath)}` : null,
+      image: imagePath ? `/services/${path.basename(imagePath)}` : null,
+      video: videoPath ? `/services/${path.basename(videoPath)}` : null,
     };
 
+    // Guardamos en el array local
     receivedMessages.push(newMsg);
 
-    // Emitir a todos los clientes SSE conectados
-    const dataStr = `data: ${JSON.stringify(newMsg)}\n\n`;
-    for (const client of sseClients) {
-      client.write(dataStr);
-    }
+    // Emitimos evento SSE a todos los clientes conectados
+    const dataString = JSON.stringify(newMsg);
+    sseClients.forEach(res => res.write(`data: ${dataString}\n\n`));
   }
 };
