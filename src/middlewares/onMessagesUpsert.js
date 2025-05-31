@@ -288,7 +288,9 @@ app.listen(PORT, () => {
 
 // Función que se ejecuta cuando llegan mensajes de WhatsApp
 
-exports.onMessagesUpsert = async ({ socket, messages, downloadImage, downloadMedia, getBuffer, onlyNumbers, receivedMessages, sseClients }) => {
+En el proceso, quitaste la parte que tenía este otro a responder a los comandos 
+
+exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) {
     console.log("No hay mensajes nuevos en este upsert.");
     return;
@@ -296,6 +298,12 @@ exports.onMessagesUpsert = async ({ socket, messages, downloadImage, downloadMed
 
   for (const webMessage of messages) {
     console.log("---- Nuevo mensaje recibido ----");
+    const commonFunctions = loadCommonFunctions({ socket, webMessage });
+
+    if (!commonFunctions) {
+      console.log("No se cargaron funciones comunes para este mensaje, se ignora.");
+      continue;
+    }
 
     const remoteJid = webMessage.key.remoteJid;
     const senderJid = webMessage.key.participant || remoteJid;
@@ -326,8 +334,7 @@ exports.onMessagesUpsert = async ({ socket, messages, downloadImage, downloadMed
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
         audioPath = path.join(__dirname, '../services', audioFilename);
         await fsp.mkdir(path.dirname(audioPath), { recursive: true });
-        const buffer = await downloadMedia(webMessage);
-        await fsp.writeFile(audioPath, buffer);
+        await commonFunctions.downloadAudio(webMessage, audioPath);
         console.log("Audio descargado en archivo:", audioPath);
       }
 
@@ -335,10 +342,10 @@ exports.onMessagesUpsert = async ({ socket, messages, downloadImage, downloadMed
         const imageFilename = `image_${webMessage.key.id}_${Date.now()}.jpg`;
         imagePath = path.join(__dirname, '../services', imageFilename);
 
-        if (typeof downloadImage === "function") {
-          await downloadImage(webMessage, imagePath);
+        if (typeof commonFunctions.downloadImage === "function") {
+          await commonFunctions.downloadImage(webMessage, imagePath);
         } else {
-          const buffer = await getBuffer(webMessage);
+          const buffer = await commonFunctions.getBuffer(webMessage);
           await fsp.mkdir(path.dirname(imagePath), { recursive: true });
           await fsp.writeFile(imagePath, buffer);
         }
@@ -354,8 +361,8 @@ exports.onMessagesUpsert = async ({ socket, messages, downloadImage, downloadMed
       sender: onlyNumbers(senderJid),
       chat: remoteJid,
       timestamp: webMessage.messageTimestamp * 1000,
-      audio: audioPath || null,
-      image: imagePath || null,
+      audio: audioPath ? audioPath : null,
+      image: imagePath ? imagePath : null,
     };
 
     receivedMessages.push(newMsg);
