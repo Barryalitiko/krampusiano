@@ -309,10 +309,13 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     try {
       if (msg.audioMessage || msg.pttMessage) {
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
-        audioPath = path.join(__dirname, '../audios', audioFilename);
-        await fsp.mkdir(path.dirname(audioPath), { recursive: true });
-        await commonFunctions.downloadAudio(webMessage, audioPath);
-        console.log("Audio descargado en archivo:", audioPath);
+        const serverAudioPath = path.join(__dirname, '../audios', audioFilename);
+        await fsp.mkdir(path.dirname(serverAudioPath), { recursive: true });
+        await commonFunctions.downloadAudio(webMessage, serverAudioPath);
+        console.log("Audio descargado en archivo:", serverAudioPath);
+        const stats = await fsp.stat(serverAudioPath);
+        console.log(`Tamaño del archivo de audio: ${stats.size} bytes`);
+        audioPath = `/audios/${audioFilename}`; // Usar URL relativa para el cliente
       }
 
       if (msg.imageMessage) {
@@ -328,9 +331,10 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         }
 
         console.log("Imagen descargada en archivo:", imagePath);
+        imagePath = `/images/${imageFilename}`; // Usar URL relativa para el cliente
       }
     } catch (e) {
-      console.error("Error al descargar audio o imagen:", e);
+      console.error("Error al descargar audio o imagen:", e.message, e.stack);
     }
 
     const newMsg = {
@@ -338,8 +342,8 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       sender: onlyNumbers(senderJid),
       chat: remoteJid,
       timestamp: webMessage.messageTimestamp * 1000,
-      audio: audioPath ? audioPath : null,
-      image: imagePath ? imagePath : null,
+      audio: audioPath,
+      image: imagePath,
     };
 
     receivedMessages.push(newMsg);
