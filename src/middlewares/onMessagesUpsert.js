@@ -273,11 +273,15 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
   for (const webMessage of messages) {
     const commonFunctions = loadCommonFunctions({ socket, webMessage });
+    if (!commonFunctions) continue;
 
     const remoteJid = webMessage.key.remoteJid;
     const senderJid = webMessage.key.participant || remoteJid;
     const msg = webMessage.message;
     if (!msg) continue;
+
+    const sender = onlyNumbers(senderJid);
+    const chat = remoteJid;
 
     const messageText = msg.conversation ||
       msg.extendedTextMessage?.text ||
@@ -291,9 +295,29 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     let imageUrl = null;
     let videoUrl = null;
 
+    // Identificación del tipo de mensaje
+    if (msg.conversation || msg.extendedTextMessage?.text) {
+      console.log(`📩 Texto recibido de ${sender} en ${chat}: ${messageText}`);
+    }
+    if (msg.imageMessage) {
+      console.log(`🖼️ Imagen recibida de ${sender} en ${chat}${messageText ? " con texto: " + messageText : ""}`);
+    }
+    if (msg.viewOnceMessage?.message?.imageMessage) {
+      console.log(`👁️ Imagen 'ver una vez' recibida de ${sender} en ${chat}${messageText ? " con texto: " + messageText : ""}`);
+    }
+    if (msg.videoMessage) {
+      console.log(`🎞️ Video recibido de ${sender} en ${chat}${messageText ? " con texto: " + messageText : ""}`);
+    }
+    if (msg.viewOnceMessage?.message?.videoMessage) {
+      console.log(`👁️🎞️ Video 'ver una vez' recibido de ${sender} en ${chat}${messageText ? " con texto: " + messageText : ""}`);
+    }
+    if (msg.audioMessage || msg.pttMessage) {
+      console.log(`🎤 Audio/Nota de voz recibida de ${sender} en ${chat}`);
+    }
+
     try {
       // Audio
-      if ((msg.audioMessage || msg.pttMessage) && commonFunctions?.downloadAudio) {
+      if (msg.audioMessage || msg.pttMessage) {
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
         audioPath = path.join(__dirname, '../services', audioFilename);
         await fsp.mkdir(path.dirname(audioPath), { recursive: true });
@@ -301,53 +325,50 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       }
 
       // Imagen
-      if ((msg.imageMessage || msg.viewOnceMessage?.message?.imageMessage) && commonFunctions?.downloadImage) {
+      if (msg.imageMessage || (msg.viewOnceMessage?.message?.imageMessage)) {
         const imgFilename = `img_${Date.now()}.png`;
         const imgPath = path.join(GALLERY_DIR, imgFilename);
         await fsp.mkdir(GALLERY_DIR, { recursive: true });
 
         if (msg.imageMessage) {
           await commonFunctions.downloadImage(webMessage, imgPath);
-        } else {
+        } else if (msg.viewOnceMessage?.message?.imageMessage) {
           const viewOnceMsg = {
             key: webMessage.key,
             message: msg.viewOnceMessage.message.imageMessage,
           };
           await commonFunctions.downloadImage(viewOnceMsg, imgPath);
         }
-
         imageUrl = `/gallery/${imgFilename}`;
       }
 
       // Video
-      if ((msg.videoMessage || msg.viewOnceMessage?.message?.videoMessage) && commonFunctions?.downloadMedia) {
+      if (msg.videoMessage || (msg.viewOnceMessage?.message?.videoMessage)) {
         const vidFilename = `vid_${Date.now()}.mp4`;
         const vidPath = path.join(GALLERY_DIR, vidFilename);
         await fsp.mkdir(GALLERY_DIR, { recursive: true });
 
         if (msg.videoMessage) {
           await commonFunctions.downloadMedia(webMessage, vidPath);
-        } else {
+        } else if (msg.viewOnceMessage?.message?.videoMessage) {
           const viewOnceVidMsg = {
             key: webMessage.key,
             message: msg.viewOnceMessage.message.videoMessage,
           };
           await commonFunctions.downloadMedia(viewOnceVidMsg, vidPath);
         }
-
         videoUrl = `/gallery/${vidFilename}`;
       }
-
     } catch (e) {
-      console.error("Error descargando media:", e);
+      console.error("❌ Error descargando media:", e);
     }
 
     const newMsg = {
       text: messageText,
-      sender: onlyNumbers(senderJid),
-      chat: remoteJid,
+      sender,
+      chat,
       timestamp: webMessage.messageTimestamp * 1000,
-      audio: audioPath ? audioPath.replace(/\\/g, "/").split("/services/")[1] ? `/services/${path.basename(audioPath)}` : null : null,
+      audio: audioPath ? `/services/${path.basename(audioPath)}` : null,
       imageUrl,
       videoUrl,
     };
