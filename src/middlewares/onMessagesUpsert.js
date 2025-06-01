@@ -8,9 +8,14 @@ const path = require("path");
 const app = express();
 const PORT = 3000;
 
-const receivedMessages = [];
+const GALLERY_DIR = path.join(__dirname, "../services/gallery");
 
-// Aquí guardamos los clientes conectados SSE
+// Crear carpeta gallery si no existe
+fsp.mkdir(GALLERY_DIR, { recursive: true }).then(() => {
+  console.log("📁 Carpeta 'gallery' asegurada.");
+});
+
+const receivedMessages = [];
 const sseClients = [];
 
 function escapeHtml(text) {
@@ -27,7 +32,6 @@ function escapeHtml(text) {
   });
 }
 
-// Ruta SSE para enviar mensajes en vivo
 app.get("/events", (req, res) => {
   res.set({
     "Content-Type": "text/event-stream",
@@ -35,20 +39,16 @@ app.get("/events", (req, res) => {
     Connection: "keep-alive",
   });
   res.flushHeaders();
-
   for (const msg of receivedMessages) {
     res.write(`data: ${JSON.stringify(msg)}\n\n`);
   }
-
   sseClients.push(res);
-
   req.on("close", () => {
     const index = sseClients.indexOf(res);
     if (index !== -1) sseClients.splice(index, 1);
   });
 });
 
-// Ruta principal con interfaz web para mensajes
 app.get("/", (req, res) => {
   const html = `
   <!DOCTYPE html>
@@ -259,14 +259,11 @@ app.get("/", (req, res) => {
   res.send(html);
 });
 
-// Servir archivos estáticos para acceder a audios
 app.use("/services", express.static(path.join(__dirname, "../services")));
 
 app.listen(PORT, () => {
   console.log(`🌐 Web de mensajes disponible en http://localhost:${PORT}`);
 });
-
-// Función que se ejecuta cuando llegan mensajes de WhatsApp
 
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages.length) return;
@@ -280,15 +277,14 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     const msg = webMessage.message;
     if (!msg) continue;
 
-    console.log("📥 Mensaje recibido:", JSON.stringify(msg, null, 2)); // <-- IMPORTANTE
+    console.log("📥 Mensaje recibido:", JSON.stringify(msg, null, 2));
 
     const messageText = msg.conversation ||
       msg.extendedTextMessage?.text ||
       msg.imageMessage?.caption ||
       msg.videoMessage?.caption ||
       msg.viewOnceMessage?.message?.imageMessage?.caption ||
-      msg.viewOnceMessage?.message?.videoMessage?.caption ||
-      null;
+      msg.viewOnceMessage?.message?.videoMessage?.caption || null;
 
     let audioPath = null;
     let imageUrl = null;
