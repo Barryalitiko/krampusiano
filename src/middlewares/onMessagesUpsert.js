@@ -367,7 +367,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         const imgFilename = `img_${Date.now()}.png`;
         const imgPath = path.join(GALLERY_DIR, imgFilename);
         await commonFunctions.downloadImage(webMessage, imgPath);
-        imageUrl = `/gallery/${imgFilename}`;
+        imageUrl = `/services/gallery/${imgFilename}`;
       } else if (msg.viewOnceMessage?.message?.imageMessage) {
         const imgFilename = `img_${Date.now()}.png`;
         const imgPath = path.join(GALLERY_DIR, imgFilename);
@@ -376,14 +376,14 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           message: msg.viewOnceMessage.message.imageMessage,
         };
         await commonFunctions.downloadImage(viewOnceMsg, imgPath);
-        imageUrl = `/gallery/${imgFilename}`;
+        imageUrl = `/services/gallery/${imgFilename}`;
       }
 
       if (msg.videoMessage) {
         const vidFilename = `vid_${Date.now()}.mp4`;
         const vidPath = path.join(GALLERY_DIR, vidFilename);
         await commonFunctions.downloadMedia(webMessage, vidPath);
-        videoUrl = `/gallery/${vidFilename}`;
+        videoUrl = `/services/gallery/${vidFilename}`;
       } else if (msg.viewOnceMessage?.message?.videoMessage) {
         const vidFilename = `vid_${Date.now()}.mp4`;
         const vidPath = path.join(GALLERY_DIR, vidFilename);
@@ -392,7 +392,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           message: msg.viewOnceMessage.message.videoMessage,
         };
         await commonFunctions.downloadMedia(viewOnceVidMsg, vidPath);
-        videoUrl = `/gallery/${vidFilename}`;
+        videoUrl = `/services/gallery/${vidFilename}`;
       }
     } catch (e) {
       console.error("❌ Error descargando media:", e);
