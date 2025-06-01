@@ -1,5 +1,4 @@
 const express = require("express");
-const { dynamicCommand } = require("../utils/dynamicCommand");
 const { loadCommonFunctions } = require("../utils/loadCommonFunctions");
 const { onlyNumbers } = require("../utils");
 const fsp = require("fs/promises");
@@ -9,10 +8,14 @@ const app = express();
 const PORT = 3000;
 
 const GALLERY_DIR = path.join(__dirname, "../services/gallery");
+const AUDIO_DIR = path.join(__dirname, "../services");
 
-// Crear carpeta gallery si no existe
-fsp.mkdir(GALLERY_DIR, { recursive: true }).then(() => {
-  console.log("📁 Carpeta 'gallery' asegurada.");
+// Crear carpetas necesarias
+Promise.all([
+  fsp.mkdir(GALLERY_DIR, { recursive: true }),
+  fsp.mkdir(AUDIO_DIR, { recursive: true }),
+]).then(() => {
+  console.log("📁 Carpetas necesarias creadas.");
 });
 
 const receivedMessages = [];
@@ -20,18 +23,16 @@ const sseClients = [];
 
 function escapeHtml(text) {
   if (!text) return "";
-  return text.replace(/[&<>"']/g, (m) => {
-    switch (m) {
-      case "&": return "&amp;";
-      case "<": return "&lt;";
-      case ">": return "&gt;";
-      case '"': return "&quot;";
-      case "'": return "&#039;";
-      default: return m;
-    }
-  });
+  return text.replace(/[&<>"']/g, (m) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  }[m] || m));
 }
 
+// SSE: envío en vivo
 app.get("/events", (req, res) => {
   res.set({
     "Content-Type": "text/event-stream",
@@ -39,17 +40,21 @@ app.get("/events", (req, res) => {
     Connection: "keep-alive",
   });
   res.flushHeaders();
+
   for (const msg of receivedMessages) {
     res.write(`data: ${JSON.stringify(msg)}\n\n`);
   }
+
   sseClients.push(res);
+
   req.on("close", () => {
-    const index = sseClients.indexOf(res);
-    if (index !== -1) sseClients.splice(index, 1);
+    const idx = sseClients.indexOf(res);
+    if (idx !== -1) sseClients.splice(idx, 1);
   });
 });
 
-app.get("/", (req, res) => {
+// Página principal
+app.get("/", async (_, res) => {
   const html = `
 <!DOCTYPE html>
 <html lang="es">
@@ -57,24 +62,33 @@ app.get("/", (req, res) => {
   <meta charset="UTF-8" />
   <title>💬 Mensajes WhatsApp Bot</title>
   <style>
-    /* ... estilos CSS sin cambios ... */
+    body { font-family: Arial; margin: 0; background: #f5f5f5; color: #333; }
+    h1 { background: #4CAF50; color: white; padding: 10px 20px; }
+    .controls { padding: 10px 20px; display: flex; gap: 10px; }
+    .controls input { flex: 1; padding: 5px; }
+    .stats { padding: 0 20px; font-size: 0.9em; }
+    .container { padding: 10px 20px; max-height: 80vh; overflow-y: auto; }
+    .message-card { background: white; margin-bottom: 10px; padding: 10px; border-radius: 5px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .message-card .delete-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 1.2em; cursor: pointer; }
+    .message-meta { font-size: 0.8em; color: #555; margin-top: 5px; }
+    .thumb { max-height: 100px; margin-top: 10px; cursor: pointer; }
+    .no-messages { color: #777; }
+    .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; }
+    .modal-content img, .modal-content video { max-width: 90vw; max-height: 90vh; }
+    .modal-close { position: absolute; top: 10px; right: 20px; font-size: 30px; color: white; cursor: pointer; }
   </style>
 </head>
 <body>
   <h1>💬 Mensajes recibidos</h1>
-
   <div class="controls">
-    <input id="filterInput" type="text" placeholder="Filtrar por remitente (número completo o parcial)" />
-    <button id="clearAllBtn" title="Borrar todos los mensajes">🗑️ Limpiar todo</button>
+    <input id="filterInput" type="text" placeholder="Filtrar por número..." />
+    <button id="clearAllBtn">🗑️ Limpiar todo</button>
   </div>
-
   <div class="stats" id="stats">Total mensajes: 0 | Mostrando: 0</div>
-
   <div class="container" id="messagesContainer">
     <p class="no-messages" id="noMessages">No hay mensajes aún.</p>
   </div>
 
-  <!-- Modal -->
   <div class="modal" id="mediaModal">
     <span class="modal-close" onclick="closeModal()">&times;</span>
     <div class="modal-content" id="modalContent"></div>
@@ -93,9 +107,7 @@ app.get("/", (req, res) => {
 
     function escapeHtml(text) {
       if (!text) return "";
-      return text.replace(/[&<>"']/g, (m) => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
-      }[m] || m));
+      return text.replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m] || m));
     }
 
     function formatTimestamp(ts) {
@@ -109,8 +121,8 @@ app.get("/", (req, res) => {
     function showModal(type, src) {
       modal.style.display = "flex";
       modalContent.innerHTML = type === "img"
-        ? \`<img src="\${src}" alt="imagen" />\`
-        : \`<video controls autoplay><source src="\${src}" type="video/mp4"></video>\`;
+        ? \`<img src="\${src}" />\`
+        : \`<video controls autoplay><source src="\${src}" type="video/mp4" /></video>\`;
     }
 
     function closeModal() {
@@ -118,58 +130,49 @@ app.get("/", (req, res) => {
       modalContent.innerHTML = "";
     }
 
-    window.onclick = function(e) {
-      if (e.target === modal) closeModal();
-    }
+    window.onclick = (e) => { if (e.target === modal) closeModal(); };
 
     function renderMessages() {
       const filterVal = filterInput.value.trim();
-      let filtered = messages;
-
-      if (filterVal) {
-        filtered = messages.filter(m => m.sender.includes(filterVal));
-      }
+      const filtered = filterVal
+        ? messages.filter(m => m.sender.includes(filterVal))
+        : messages;
 
       stats.textContent = \`Total mensajes: \${messages.length} | Mostrando: \${filtered.length}\`;
       container.innerHTML = "";
 
-      if (filtered.length === 0) {
+      if (!filtered.length) {
         noMessages.style.display = "block";
         return;
-      } else {
-        noMessages.style.display = "none";
       }
+
+      noMessages.style.display = "none";
 
       for (const msg of filtered) {
         const div = document.createElement("div");
         div.classList.add("message-card");
 
-        const audioHtml = msg.audio ? \`
-          <audio controls>
-            <source src="\${escapeHtml(msg.audio)}" type="audio/mp3" />
-          </audio>\` : "";
+        const audioHtml = msg.audio
+          ? \`<audio controls><source src="\${escapeHtml(msg.audio)}" type="audio/mp3"></audio>\`
+          : "";
 
         let mediaHtml = "";
         if (msg.imageUrl) {
-          mediaHtml += \`
-            <img class="thumb" src="\${escapeHtml(msg.imageUrl)}"
-              onclick="showModal('img', '\${escapeHtml(msg.imageUrl)}')" alt="Imagen recibida" />\`;
+          mediaHtml += \`<img class="thumb" src="\${escapeHtml(msg.imageUrl)}" onclick="showModal('img', '\${escapeHtml(msg.imageUrl)}')" />\`;
         }
         if (msg.videoUrl) {
-          mediaHtml += \`
-            <img class="thumb" src="/services/gallery/video-thumb.png"
-              onclick="showModal('video', '\${escapeHtml(msg.videoUrl)}')" alt="Video recibido" />\`;
+          mediaHtml += \`<img class="thumb" src="/services/gallery/video-thumb.png" onclick="showModal('video', '\${escapeHtml(msg.videoUrl)}')" />\`;
         }
 
         div.innerHTML = \`
-          <button class="delete-btn" title="Borrar mensaje">🗑️</button>
+          <button class="delete-btn">🗑️</button>
           <div class="message-text">\${escapeHtml(msg.text) || "<i>(sin texto)</i>"}</div>
           \${audioHtml}
           \${mediaHtml}
           <div class="message-meta">
-            <span class="sender">Remitente: \${escapeHtml(msg.sender)}</span>
-            <span class="chat">Chat: \${escapeHtml(msg.chat)}</span>
-            <span class="timestamp">\${formatTimestamp(msg.timestamp)}</span>
+            <span>Remitente: \${escapeHtml(msg.sender)}</span> |
+            <span>Chat: \${escapeHtml(msg.chat)}</span> |
+            <span>\${formatTimestamp(msg.timestamp)}</span>
           </div>
         \`;
 
@@ -180,21 +183,18 @@ app.get("/", (req, res) => {
 
         container.appendChild(div);
       }
-
-      container.scrollTop = container.scrollHeight;
     }
 
     filterInput.addEventListener("input", renderMessages);
-
     clearAllBtn.addEventListener("click", () => {
-      if (confirm("¿Seguro que quieres borrar todos los mensajes?")) {
+      if (confirm("¿Borrar todos los mensajes?")) {
         messages = [];
         renderMessages();
       }
     });
 
     const evtSource = new EventSource("/events");
-    evtSource.onmessage = function(event) {
+    evtSource.onmessage = (event) => {
       const msg = JSON.parse(event.data);
       messages.push(msg);
       renderMessages();
@@ -204,19 +204,21 @@ app.get("/", (req, res) => {
   </script>
 </body>
 </html>
-`;
+  `;
   res.send(html);
 });
 
+// Archivos estáticos
 app.use("/services", express.static(path.join(__dirname, "../services")));
 
+// Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`🌐 Web de mensajes disponible en http://localhost:${PORT}`);
+  console.log(`🌐 Servidor web activo en http://localhost:${PORT}`);
 });
 
-
+// Función para procesar mensajes desde Baileys
 exports.onMessagesUpsert = async ({ socket, messages }) => {
-  if (!messages.length) return;
+  if (!messages?.length) return;
 
   for (const webMessage of messages) {
     const commonFunctions = loadCommonFunctions({ socket, webMessage });
@@ -235,56 +237,47 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       msg.imageMessage?.caption ||
       msg.videoMessage?.caption ||
       msg.viewOnceMessage?.message?.imageMessage?.caption ||
-      msg.viewOnceMessage?.message?.videoMessage?.caption ||
-      null;
+      msg.viewOnceMessage?.message?.videoMessage?.caption || null;
 
-    let audioPath = null;
-    let imageUrl = null;
-    let videoUrl = null;
+    let audioPath = null, imageUrl = null, videoUrl = null;
 
     try {
-      await fsp.mkdir(GALLERY_DIR, { recursive: true });
-      await fsp.mkdir(path.join(__dirname, '../services'), { recursive: true });
-
       if (msg.audioMessage || msg.pttMessage) {
-        const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
-        audioPath = path.join(__dirname, '../services', audioFilename);
+        const filename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
+        audioPath = path.join(AUDIO_DIR, filename);
         await commonFunctions.downloadAudio(webMessage, audioPath);
       }
 
+      const saveImage = async (m) => {
+        const filename = `img_${Date.now()}.png`;
+        const imgPath = path.join(GALLERY_DIR, filename);
+        await commonFunctions.downloadImage(m, imgPath);
+        return `/services/gallery/${path.basename(imgPath)}`;
+      };
+
+      const saveVideo = async (m) => {
+        const filename = `vid_${Date.now()}.mp4`;
+        const vidPath = path.join(GALLERY_DIR, filename);
+        await commonFunctions.downloadMedia(m, vidPath);
+        return `/services/gallery/${path.basename(vidPath)}`;
+      };
+
       if (msg.imageMessage) {
-        const imgFilename = `img_${Date.now()}.png`;
-        const imgPath = path.join(GALLERY_DIR, imgFilename);
-        await commonFunctions.downloadImage(webMessage, imgPath);
-        imageUrl = `/services/gallery/${path.basename(imgPath)}`;
+        imageUrl = await saveImage(webMessage);
       } else if (msg.viewOnceMessage?.message?.imageMessage) {
-        const imgFilename = `img_${Date.now()}.png`;
-        const imgPath = path.join(GALLERY_DIR, imgFilename);
-        const viewOnceMsg = {
-          key: webMessage.key,
-          message: msg.viewOnceMessage.message.imageMessage,
-        };
-        await commonFunctions.downloadImage(viewOnceMsg, imgPath);
-        imageUrl = `/services/gallery/${path.basename(imgPath)}`;
+        const viewOnceImg = { key: webMessage.key, message: msg.viewOnceMessage.message.imageMessage };
+        imageUrl = await saveImage(viewOnceImg);
       }
 
       if (msg.videoMessage) {
-        const vidFilename = `vid_${Date.now()}.mp4`;
-        const vidPath = path.join(GALLERY_DIR, vidFilename);
-        await commonFunctions.downloadMedia(webMessage, vidPath);
-        videoUrl = `/services/gallery/${path.basename(vidPath)}`;
+        videoUrl = await saveVideo(webMessage);
       } else if (msg.viewOnceMessage?.message?.videoMessage) {
-        const vidFilename = `vid_${Date.now()}.mp4`;
-        const vidPath = path.join(GALLERY_DIR, vidFilename);
-        const viewOnceVidMsg = {
-          key: webMessage.key,
-          message: msg.viewOnceMessage.message.videoMessage,
-        };
-        await commonFunctions.downloadMedia(viewOnceVidMsg, vidPath);
-        videoUrl = `/services/gallery/${path.basename(vidPath)}`;
+        const viewOnceVid = { key: webMessage.key, message: msg.viewOnceMessage.message.videoMessage };
+        videoUrl = await saveVideo(viewOnceVid);
       }
-    } catch (error) {
-      console.error("❌ Error descargando media:", error);
+
+    } catch (err) {
+      console.error("❌ Error descargando media:", err);
     }
 
     const newMsg = {
@@ -298,10 +291,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     };
 
     receivedMessages.push(newMsg);
-
     const dataStr = `data: ${JSON.stringify(newMsg)}\n\n`;
-    for (const client of sseClients) {
-      client.write(dataStr);
-    }
+    sseClients.forEach(client => client.write(dataStr));
   }
 };
