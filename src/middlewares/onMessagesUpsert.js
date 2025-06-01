@@ -337,7 +337,8 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     const msg = webMessage.message;
     if (!msg) continue;
 
-    console.log("📥 Mensaje recibido:", JSON.stringify(msg, null, 2));
+    // Log solo al recibir un mensaje
+    console.log("📥 Mensaje recibido");
 
     // Obtener texto del mensaje
     const messageText = msg.conversation ||
@@ -356,25 +357,18 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     await fsp.mkdir(path.join(__dirname, '../services'), { recursive: true });
 
     try {
-      // Audio o PTT
       if (msg.audioMessage || msg.pttMessage) {
-        console.log("🎧 Mensaje de audio detectado");
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
         audioPath = path.join(__dirname, '../services', audioFilename);
         await commonFunctions.downloadAudio(webMessage, audioPath);
       }
 
-      // Imagen normal
       if (msg.imageMessage) {
-        console.log("🖼️ Imagen detectada");
         const imgFilename = `img_${Date.now()}.png`;
         const imgPath = path.join(GALLERY_DIR, imgFilename);
         await commonFunctions.downloadImage(webMessage, imgPath);
         imageUrl = `/gallery/${imgFilename}`;
-      } 
-      // Imagen 'ver una vez'
-      else if (msg.viewOnceMessage?.message?.imageMessage) {
-        console.log("👁️ Imagen de 'ver una vez' detectada");
+      } else if (msg.viewOnceMessage?.message?.imageMessage) {
         const imgFilename = `img_${Date.now()}.png`;
         const imgPath = path.join(GALLERY_DIR, imgFilename);
         const viewOnceMsg = {
@@ -385,17 +379,12 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         imageUrl = `/gallery/${imgFilename}`;
       }
 
-      // Video normal
       if (msg.videoMessage) {
-        console.log("🎥 Video detectado");
         const vidFilename = `vid_${Date.now()}.mp4`;
         const vidPath = path.join(GALLERY_DIR, vidFilename);
         await commonFunctions.downloadMedia(webMessage, vidPath);
         videoUrl = `/gallery/${vidFilename}`;
-      } 
-      // Video 'ver una vez'
-      else if (msg.viewOnceMessage?.message?.videoMessage) {
-        console.log("👁️ Video de 'ver una vez' detectado");
+      } else if (msg.viewOnceMessage?.message?.videoMessage) {
         const vidFilename = `vid_${Date.now()}.mp4`;
         const vidPath = path.join(GALLERY_DIR, vidFilename);
         const viewOnceVidMsg = {
@@ -405,7 +394,6 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         await commonFunctions.downloadMedia(viewOnceVidMsg, vidPath);
         videoUrl = `/gallery/${vidFilename}`;
       }
-
     } catch (e) {
       console.error("❌ Error descargando media:", e);
     }
