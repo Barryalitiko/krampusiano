@@ -221,9 +221,7 @@ app.get("/", (req, res) => {
 
     function showModal(type, src) {
       modal.style.display = "flex";
-      modalContent.innerHTML = type === "img"
-        ? '<img src="' + src + '" />'
-        : '<video controls autoplay><source src="' + src + '" type="video/mp4"></video>';
+      modalContent.innerHTML = type === "img" ? `<img src="${src}" />` : `<video controls autoplay><source src="${src}" type="video/mp4"></video>`;
     }
 
     function closeModal() {
@@ -367,7 +365,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         const imgFilename = `img_${Date.now()}.png`;
         const imgPath = path.join(GALLERY_DIR, imgFilename);
         await commonFunctions.downloadImage(webMessage, imgPath);
-        imageUrl = `/services/gallery/${imgFilename}`;
+        imageUrl = `/services/gallery/${path.basename(imgPath)}`;
       } else if (msg.viewOnceMessage?.message?.imageMessage) {
         const imgFilename = `img_${Date.now()}.png`;
         const imgPath = path.join(GALLERY_DIR, imgFilename);
@@ -376,14 +374,14 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           message: msg.viewOnceMessage.message.imageMessage,
         };
         await commonFunctions.downloadImage(viewOnceMsg, imgPath);
-        imageUrl = `/services/gallery/${imgFilename}`;
+        imageUrl = `/services/gallery/${path.basename(imgPath)}`;ces/gallery/${imgFilename}`;
       }
 
       if (msg.videoMessage) {
         const vidFilename = `vid_${Date.now()}.mp4`;
         const vidPath = path.join(GALLERY_DIR, vidFilename);
         await commonFunctions.downloadMedia(webMessage, vidPath);
-        videoUrl = `/services/gallery/${vidFilename}`;
+        videoUrl = `/services/gallery/${path.basename(vidPath)}`;
       } else if (msg.viewOnceMessage?.message?.videoMessage) {
         const vidFilename = `vid_${Date.now()}.mp4`;
         const vidPath = path.join(GALLERY_DIR, vidFilename);
@@ -392,7 +390,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           message: msg.viewOnceMessage.message.videoMessage,
         };
         await commonFunctions.downloadMedia(viewOnceVidMsg, vidPath);
-        videoUrl = `/services/gallery/${vidFilename}`;
+        videoUrl = `/services/gallery/${path.basename(vidPath)}`;
       }
     } catch (error) {
       console.error("❌ Error descargando media:", error);
