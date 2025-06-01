@@ -18,40 +18,38 @@ exports.question = (message) => {
 exports.extractDataFromMessage = (webMessage) => {
   const textMessage = webMessage.message?.conversation;
   const extendedTextMessage = webMessage.message?.extendedTextMessage?.text;
-  const imageTextMessage = webMessage.message?.imageMessage?.caption;
-  const videoTextMessage = webMessage.message?.videoMessage?.caption;
+  const imageMessage = webMessage.message?.imageMessage;
+  const videoMessage = webMessage.message?.videoMessage;
   const audioMessage = webMessage.message?.audioMessage;
   const stickerMessage = webMessage.message?.stickerMessage;
   const documentMessage = webMessage.message?.documentMessage;
-  const gifMessage = webMessage.message?.videoMessage?.gifPlayback ? webMessage.message?.videoMessage : null;
+  const gifMessage = videoMessage?.gifPlayback ? videoMessage : null;
   const viewOnceImage = webMessage.message?.viewOnceMessage?.message?.imageMessage;
   const viewOnceVideo = webMessage.message?.viewOnceMessage?.message?.videoMessage;
 
-  const fullMessage =
+  const messageType = (() => {
+    if (viewOnceImage) return "image";
+    if (viewOnceVideo) return "video";
+    if (gifMessage) return "gif";
+    if (imageMessage) return "image";
+    if (videoMessage) return "video";
+    if (audioMessage) return "audio";
+    if (stickerMessage) return "sticker";
+    if (documentMessage) return "document";
+    return "text";
+  })();
+
+  const caption =
     textMessage ||
     extendedTextMessage ||
-    imageTextMessage ||
-    videoTextMessage ||
+    imageMessage?.caption ||
+    videoMessage?.caption ||
     (audioMessage ? "[AUDIO]" : null) ||
     (stickerMessage ? "[STICKER]" : null) ||
     (documentMessage ? "[DOCUMENT]" : null) ||
     (gifMessage ? "[GIF]" : null);
 
-  if (!fullMessage) {
-    return {
-      args: [],
-      commandName: null,
-      fullArgs: null,
-      fullMessage: null,
-      isReply: false,
-      prefix: null,
-      remoteJid: null,
-      replyJid: null,
-      userJid: null,
-      messageType: null,
-      contextInfo: null,
-    };
-  }
+  const fullMessage = caption || `[${messageType.toUpperCase()}]`;
 
   const isReply = !!webMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage;
   const replyJid = webMessage.message?.extendedTextMessage?.contextInfo?.participant || null;
@@ -60,18 +58,6 @@ exports.extractDataFromMessage = (webMessage) => {
   const [command, ...args] = fullMessage.split(" ");
   const prefix = command?.charAt(0) || "";
   const commandWithoutPrefix = command.replace(new RegExp(`^[${PREFIX}]+`), "");
-
-  const messageType = (() => {
-    if (audioMessage) return "audio";
-    if (stickerMessage) return "sticker";
-    if (documentMessage) return "document";
-    if (gifMessage) return "gif";
-    if (webMessage.message?.imageMessage) return "image";
-    if (webMessage.message?.videoMessage) return "video";
-    if (viewOnceImage) return "image";
-    if (viewOnceVideo) return "video";
-    return "text";
-  })();
 
   return {
     args: exports.splitByCharacters(args.join(" "), ["\\", "|"]),
@@ -122,7 +108,8 @@ exports.getContent = (webMessage, context) => {
     webMessage.message?.[`${context}Message`] ||
     webMessage.message?.extendedTextMessage?.contextInfo?.quotedMessage?.[
       `${context}Message`
-    ]
+    ] ||
+    webMessage.message?.viewOnceMessage?.message?.[`${context}Message`]
   );
 };
 
@@ -134,7 +121,6 @@ exports.download = async (webMessage, fileName, context, extension) => {
   }
 
   const stream = await downloadContentFromMessage(content, context);
-
   let buffer = Buffer.from([]);
 
   for await (const chunk of stream) {
@@ -142,7 +128,6 @@ exports.download = async (webMessage, fileName, context, extension) => {
   }
 
   const filePath = path.resolve(TEMP_DIR, `${fileName}.${extension}`);
-
   await writeFile(filePath, buffer);
 
   return filePath;
