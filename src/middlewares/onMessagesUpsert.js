@@ -221,7 +221,9 @@ app.get("/", (req, res) => {
 
     function showModal(type, src) {
       modal.style.display = "flex";
-      modalContent.innerHTML = type === "img" ? `<img src="${src}" />` : `<video controls autoplay><source src="${src}" type="video/mp4"></video>`;
+      modalContent.innerHTML = type === "img"
+  ? `<img src="${src}" />`
+  : `<video controls autoplay><source src="${src}" type="video/mp4"></video>`;
     }
 
     function closeModal() {
