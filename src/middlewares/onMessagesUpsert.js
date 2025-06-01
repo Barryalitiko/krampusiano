@@ -3,6 +3,7 @@ const { loadCommonFunctions } = require("../utils/loadCommonFunctions");
 const { onlyNumbers } = require("../utils");
 const fsp = require("fs/promises");
 const path = require("path");
+const { fileTypeFromBuffer } = require ("file-type");
 
 const app = express();
 const PORT = 3000;
