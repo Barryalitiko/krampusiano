@@ -218,6 +218,7 @@ app.listen(PORT, () => {
 });
 
 // Función para procesar mensajes desde Baileys
+
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages?.length) return;
 
@@ -253,15 +254,10 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       }
 
       const saveImage = async (m) => {
-        const filename = `img_${Date.now()}`;
-        const imgPath = path.join(GALLERY_DIR, filename);
-        const filePath = await commonFunctions.downloadImage(m, imgPath);
-        const fileType = await FileType.fromFile(filePath);
-        const extension = fileType.ext;
-        const newFileName = `${filename}.${extension}`;
-        const newImgPath = path.join(GALLERY_DIR, newFileName);
-        await fs.rename(filePath, newImgPath);
-        return `/services/gallery/${newFileName}`;
+        const ext = ".jpg";
+        const filePath = path.join(GALLERY_DIR, `img_${Date.now()}${ext}`);
+        await commonFunctions.downloadImage(m, filePath, 'image/jpeg');
+        return `/services/gallery/${path.basename(filePath)}`;
       };
 
       const saveVideo = async (m) => {
