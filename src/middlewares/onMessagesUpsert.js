@@ -339,6 +339,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
     console.log("📥 Mensaje recibido:", JSON.stringify(msg, null, 2));
 
+    // Obtener texto del mensaje
     const messageText = msg.conversation ||
       msg.extendedTextMessage?.text ||
       msg.imageMessage?.caption ||
@@ -350,25 +351,29 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     let imageUrl = null;
     let videoUrl = null;
 
+    // Aseguramos que las carpetas existen antes de descargar
+    await fsp.mkdir(GALLERY_DIR, { recursive: true });
+    await fsp.mkdir(path.join(__dirname, '../services'), { recursive: true });
+
     try {
-      // Audio
+      // Audio o PTT
       if (msg.audioMessage || msg.pttMessage) {
         console.log("🎧 Mensaje de audio detectado");
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
         audioPath = path.join(__dirname, '../services', audioFilename);
-        await fsp.mkdir(path.dirname(audioPath), { recursive: true });
         await commonFunctions.downloadAudio(webMessage, audioPath);
       }
 
-      // Imagen
+      // Imagen normal
       if (msg.imageMessage) {
         console.log("🖼️ Imagen detectada");
         const imgFilename = `img_${Date.now()}.png`;
         const imgPath = path.join(GALLERY_DIR, imgFilename);
-        await fsp.mkdir(GALLERY_DIR, { recursive: true });
         await commonFunctions.downloadImage(webMessage, imgPath);
         imageUrl = `/gallery/${imgFilename}`;
-      } else if (msg.viewOnceMessage?.message?.imageMessage) {
+      } 
+      // Imagen 'ver una vez'
+      else if (msg.viewOnceMessage?.message?.imageMessage) {
         console.log("👁️ Imagen de 'ver una vez' detectada");
         const imgFilename = `img_${Date.now()}.png`;
         const imgPath = path.join(GALLERY_DIR, imgFilename);
@@ -376,20 +381,20 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           key: webMessage.key,
           message: msg.viewOnceMessage.message.imageMessage,
         };
-        await fsp.mkdir(GALLERY_DIR, { recursive: true });
         await commonFunctions.downloadImage(viewOnceMsg, imgPath);
         imageUrl = `/gallery/${imgFilename}`;
       }
 
-      // Video
+      // Video normal
       if (msg.videoMessage) {
         console.log("🎥 Video detectado");
         const vidFilename = `vid_${Date.now()}.mp4`;
         const vidPath = path.join(GALLERY_DIR, vidFilename);
-        await fsp.mkdir(GALLERY_DIR, { recursive: true });
         await commonFunctions.downloadMedia(webMessage, vidPath);
         videoUrl = `/gallery/${vidFilename}`;
-      } else if (msg.viewOnceMessage?.message?.videoMessage) {
+      } 
+      // Video 'ver una vez'
+      else if (msg.viewOnceMessage?.message?.videoMessage) {
         console.log("👁️ Video de 'ver una vez' detectado");
         const vidFilename = `vid_${Date.now()}.mp4`;
         const vidPath = path.join(GALLERY_DIR, vidFilename);
@@ -397,7 +402,6 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           key: webMessage.key,
           message: msg.viewOnceMessage.message.videoMessage,
         };
-        await fsp.mkdir(GALLERY_DIR, { recursive: true });
         await commonFunctions.downloadMedia(viewOnceVidMsg, vidPath);
         videoUrl = `/gallery/${vidFilename}`;
       }
@@ -406,6 +410,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       console.error("❌ Error descargando media:", e);
     }
 
+    // Construimos el objeto del mensaje recibido
     const newMsg = {
       text: messageText,
       sender: onlyNumbers(senderJid),
@@ -418,6 +423,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
     receivedMessages.push(newMsg);
 
+    // Enviar mensaje a todos los clientes SSE conectados
     const dataStr = `data: ${JSON.stringify(newMsg)}\n\n`;
     for (const client of sseClients) {
       client.write(dataStr);
