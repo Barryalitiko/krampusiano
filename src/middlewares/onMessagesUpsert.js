@@ -242,54 +242,35 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       null;
 
     let audioPath = null,
-        imageUrl = null,
-        videoUrl = null;
-
-    // 🔽 Función auxiliar para descargar contenido como buffer
-    const downloadMediaAsBuffer = async (m, type) => {
-      const stream = await downloadContentFromMessage(m.message, type);
-      const chunks = [];
-      for await (const chunk of stream) chunks.push(chunk);
-      return Buffer.concat(chunks);
-    };
-
-    const saveImage = async (m) => {
-      const buffer = await downloadMediaAsBuffer(m, 'image');
-      const type = await fileTypeFromBuffer(buffer);
-
-      if (!type || !type.mime.startsWith('image/')) {
-        throw new Error('Archivo no es una imagen válida');
-      }
-
-      const filename = `img_${Date.now()}.${type.ext}`;
-      const imgPath = path.join(GALLERY_DIR, filename);
-      await fs.promises.writeFile(imgPath, buffer);
-      return `/services/gallery/${path.basename(imgPath)}`;
-    };
-
-    const saveVideo = async (m) => {
-      const buffer = await downloadMediaAsBuffer(m, 'video');
-      const type = await fileTypeFromBuffer(buffer);
-
-      if (!type || !type.mime.startsWith('video/')) {
-        throw new Error('Archivo no es un video válido');
-      }
-
-      const filename = `vid_${Date.now()}.${type.ext}`;
-      const vidPath = path.join(GALLERY_DIR, filename);
-      await fs.promises.writeFile(vidPath, buffer);
-      return `/services/gallery/${path.basename(vidPath)}`;
-    };
+      imageUrl = null,
+      videoUrl = null;
 
     try {
-      // Audio
       if (msg.audioMessage || msg.pttMessage) {
         const filename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
         audioPath = path.join(AUDIO_DIR, filename);
         await commonFunctions.downloadAudio(webMessage, audioPath);
       }
 
-      // Imagen
+      const saveImage = async (m) => {
+        const filename = `img_${Date.now()}`;
+        const imgPath = path.join(GALLERY_DIR, filename);
+        const filePath = await commonFunctions.downloadImage(m, imgPath);
+        const fileType = await FileType.fromFile(filePath);
+        const extension = fileType.ext;
+        const newFileName = `${filename}.${extension}`;
+        const newImgPath = path.join(GALLERY_DIR, newFileName);
+        await fs.rename(filePath, newImgPath);
+        return `/services/gallery/${newFileName}`;
+      };
+
+      const saveVideo = async (m) => {
+        const filename = `vid_${Date.now()}.mp4`;
+        const vidPath = path.join(GALLERY_DIR, filename);
+        await commonFunctions.downloadMedia(m, vidPath);
+        return `/services/gallery/${path.basename(vidPath)}`;
+      };
+
       if (msg.imageMessage) {
         imageUrl = await saveImage(webMessage);
       } else if (msg.viewOnceMessage?.message?.imageMessage) {
@@ -300,7 +281,6 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         imageUrl = await saveImage(viewOnceImg);
       }
 
-      // Video
       if (msg.videoMessage) {
         videoUrl = await saveVideo(webMessage);
       } else if (msg.viewOnceMessage?.message?.videoMessage) {
