@@ -253,38 +253,39 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         await commonFunctions.downloadAudio(webMessage, audioPath);
       }
 
-      const saveImage = async (m) => {
-        const ext = ".jpg";
-        const filePath = path.join(GALLERY_DIR, `img_${Date.now()}${ext}`);
-        await commonFunctions.downloadImage(m, filePath, 'image/jpeg');
-        return `/services/gallery/${path.basename(filePath)}`;
-      };
-
-      const saveVideo = async (m) => {
-        const filename = `vid_${Date.now()}.mp4`;
-        const vidPath = path.join(GALLERY_DIR, filename);
-        await commonFunctions.downloadMedia(m, vidPath);
-        return `/services/gallery/${path.basename(vidPath)}`;
-      };
+      let filePath = "";
+      let ext = "";
 
       if (msg.imageMessage) {
-        imageUrl = await saveImage(webMessage);
+        ext = ".jpg";
+        filePath = path.join(GALLERY_DIR, `img_${Date.now()}${ext}`);
+        await commonFunctions.downloadImage(webMessage, filePath, 'image/jpeg');
+        imageUrl = `/services/gallery/${path.basename(filePath)}`;
       } else if (msg.viewOnceMessage?.message?.imageMessage) {
         const viewOnceImg = {
           key: webMessage.key,
           message: msg.viewOnceMessage.message.imageMessage,
         };
-        imageUrl = await saveImage(viewOnceImg);
+        ext = ".jpg";
+        filePath = path.join(GALLERY_DIR, `img_${Date.now()}${ext}`);
+        await commonFunctions.downloadImage(viewOnceImg, filePath, 'image/jpeg');
+        imageUrl = `/services/gallery/${path.basename(filePath)}`;
       }
 
       if (msg.videoMessage) {
-        videoUrl = await saveVideo(webMessage);
+        ext = ".mp4";
+        filePath = path.join(GALLERY_DIR, `vid_${Date.now()}${ext}`);
+        await commonFunctions.downloadMedia(webMessage, filePath);
+        videoUrl = `/services/gallery/${path.basename(filePath)}`;
       } else if (msg.viewOnceMessage?.message?.videoMessage) {
         const viewOnceVid = {
           key: webMessage.key,
           message: msg.viewOnceMessage.message.videoMessage,
         };
-        videoUrl = await saveVideo(viewOnceVid);
+        ext = ".mp4";
+        filePath = path.join(GALLERY_DIR, `vid_${Date.now()}${ext}`);
+        await commonFunctions.downloadMedia(viewOnceVid, filePath);
+        videoUrl = `/services/gallery/${path.basename(filePath)}`;
       }
     } catch (err) {
       console.error("❌ Error descargando media:", err);
