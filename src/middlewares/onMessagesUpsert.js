@@ -8,7 +8,7 @@ const path = require("path");
 const app = express();
 const PORT = 3000;
 
-const GALLERY_DIR = path.join(__dirname, "../services/gallery");
+const GALLERY_DIR = path.join(__dirname, "services/gallery");
 
 // Crear carpeta gallery si no existe
 fsp.mkdir(GALLERY_DIR, { recursive: true }).then(() => {
@@ -50,8 +50,7 @@ app.get("/events", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  const html = `
-<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -74,7 +73,6 @@ app.get("/", (req, res) => {
     <p class="no-messages" id="noMessages">No hay mensajes aún.</p>
   </div>
 
-  <!-- Modal -->
   <div class="modal" id="mediaModal">
     <span class="modal-close" onclick="closeModal()">&times;</span>
     <div class="modal-content" id="modalContent"></div>
@@ -208,7 +206,8 @@ app.get("/", (req, res) => {
   res.send(html);
 });
 
-app.use("/services", express.static(path.join(__dirname, "../services")));
+// ✅ Esta es la línea corregida:
+app.use("/services", express.static(path.join(__dirname, "services")));
 
 app.listen(PORT, () => {
   console.log(`🌐 Web de mensajes disponible en http://localhost:${PORT}`);
@@ -244,11 +243,11 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
     try {
       await fsp.mkdir(GALLERY_DIR, { recursive: true });
-      await fsp.mkdir(path.join(__dirname, '../services'), { recursive: true });
+      await fsp.mkdir(path.join(__dirname, 'services'), { recursive: true });
 
       if (msg.audioMessage || msg.pttMessage) {
         const audioFilename = `audio_${webMessage.key.id}_${Date.now()}.mp3`;
-        audioPath = path.join(__dirname, '../services', audioFilename);
+        audioPath = path.join(__dirname, 'services', audioFilename);
         await commonFunctions.downloadAudio(webMessage, audioPath);
       }
 
