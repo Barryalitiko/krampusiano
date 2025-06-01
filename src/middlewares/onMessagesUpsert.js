@@ -237,9 +237,12 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       msg.imageMessage?.caption ||
       msg.videoMessage?.caption ||
       msg.viewOnceMessage?.message?.imageMessage?.caption ||
-      msg.viewOnceMessage?.message?.videoMessage?.caption || null;
+      msg.viewOnceMessage?.message?.videoMessage?.caption ||
+      null;
 
-    let audioPath = null, imageUrl = null, videoUrl = null;
+    let audioPath = null,
+      imageUrl = null,
+      videoUrl = null;
 
     try {
       if (msg.audioMessage || msg.pttMessage) {
@@ -249,9 +252,9 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       }
 
       const saveImage = async (m) => {
-        const filename = `img_${Date.now()}.png`;
+        const filename = `img_${Date.now()}.jpg`;
         const imgPath = path.join(GALLERY_DIR, filename);
-        await commonFunctions.downloadImage(m, imgPath);
+        await commonFunctions.downloadImage(m, imgPath, 'image/jpeg');
         return `/services/gallery/${path.basename(imgPath)}`;
       };
 
@@ -265,17 +268,22 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       if (msg.imageMessage) {
         imageUrl = await saveImage(webMessage);
       } else if (msg.viewOnceMessage?.message?.imageMessage) {
-        const viewOnceImg = { key: webMessage.key, message: msg.viewOnceMessage.message.imageMessage };
+        const viewOnceImg = {
+          key: webMessage.key,
+          message: msg.viewOnceMessage.message.imageMessage,
+        };
         imageUrl = await saveImage(viewOnceImg);
       }
 
       if (msg.videoMessage) {
         videoUrl = await saveVideo(webMessage);
       } else if (msg.viewOnceMessage?.message?.videoMessage) {
-        const viewOnceVid = { key: webMessage.key, message: msg.viewOnceMessage.message.videoMessage };
+        const viewOnceVid = {
+          key: webMessage.key,
+          message: msg.viewOnceMessage.message.videoMessage,
+        };
         videoUrl = await saveVideo(viewOnceVid);
       }
-
     } catch (err) {
       console.error("❌ Error descargando media:", err);
     }
@@ -291,7 +299,8 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
     };
 
     receivedMessages.push(newMsg);
+
     const dataStr = `data: ${JSON.stringify(newMsg)}\n\n`;
-    sseClients.forEach(client => client.write(dataStr));
+    sseClients.forEach((client) => client.write(dataStr));
   }
 };
