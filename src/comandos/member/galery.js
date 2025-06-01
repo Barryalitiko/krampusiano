@@ -50,7 +50,7 @@ module.exports = {
 
       // Aquí colocas la IP o dominio público del servidor y puerto donde sirves la galería
       // Si es local y pruebas en localhost o red local, ajusta el host:
-      const host = "http://localhost:3000"; // Cambia según tu configuración
+      const host = "http://localhost:4000"; // Cambia según tu configuración
 
       const publicUrl = `${host}/gallery/${path.basename(filePath)}`;
 
