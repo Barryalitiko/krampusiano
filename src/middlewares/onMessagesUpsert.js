@@ -338,13 +338,13 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
     console.log("📥 Mensaje recibido");
 
-    const messageText = 
-      msg.conversation || 
-      msg.extendedTextMessage?.text || 
-      msg.imageMessage?.caption || 
-      msg.videoMessage?.caption || 
-      msg.viewOnceMessage?.message?.imageMessage?.caption || 
-      msg.viewOnceMessage?.message?.videoMessage?.caption || 
+    const messageText =
+      msg.conversation ||
+      msg.extendedTextMessage?.text ||
+      msg.imageMessage?.caption ||
+      msg.videoMessage?.caption ||
+      msg.viewOnceMessage?.message?.imageMessage?.caption ||
+      msg.viewOnceMessage?.message?.videoMessage?.caption ||
       null;
 
     let audioPath = null;
@@ -374,7 +374,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           message: msg.viewOnceMessage.message.imageMessage,
         };
         await commonFunctions.downloadImage(viewOnceMsg, imgPath);
-        imageUrl = `/services/gallery/${path.basename(imgPath)}`;ces/gallery/${imgFilename}`;
+        imageUrl = `/services/gallery/${path.basename(imgPath)}`;
       }
 
       if (msg.videoMessage) {
