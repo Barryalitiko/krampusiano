@@ -62,7 +62,7 @@ app.get("/", async (_, res) => {
   <meta charset="UTF-8" />
   <title>💬 Mensajes WhatsApp Bot</title>
   <style>
-    /* ... (estilos igual que ya tenías, todo bien) ... */
+    /* ... deja aquí tus estilos originales sin cambios ... */
   </style>
 </head>
 <body>
@@ -142,15 +142,15 @@ app.get("/", async (_, res) => {
         div.classList.add("message-card");
 
         const audioHtml = msg.audio
-          ? \`<audio controls><source src="\${escapeHtml(msg.audio)}" type="audio/mp3"></audio>\`
+          ? \`<audio controls><source src="/services/\${escapeHtml(msg.audio)}" type="audio/mp3"></audio>\`
           : "";
 
         let mediaHtml = "";
         if (msg.imageUrl) {
-          mediaHtml += \`<img class="thumb" src="/gallery/\${escapeHtml(msg.imageUrl)}" onclick="showModal('img', '/gallery/\${escapeHtml(msg.imageUrl)}')" />\`;
+          mediaHtml += \`<img class="thumb" src="/services/gallery/\${escapeHtml(msg.imageUrl)}" onclick="showModal('img', '/services/gallery/\${escapeHtml(msg.imageUrl)}')" />\`;
         }
         if (msg.videoUrl) {
-          mediaHtml += \`<img class="thumb" src="/services/gallery/video-thumb.png" onclick="showModal('video', '/gallery/\${escapeHtml(msg.videoUrl)}')" />\`;
+          mediaHtml += \`<img class="thumb" src="/services/gallery/video-thumb.png" onclick="showModal('video', '/services/gallery/\${escapeHtml(msg.videoUrl)}')" />\`;
         }
 
         div.innerHTML = \`
