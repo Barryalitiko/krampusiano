@@ -9,20 +9,16 @@ const app = express();
 const PORT = 3000;
 
 const SERVICES_DIR = path.join(__dirname, "../services");
-const PUBLIC_GALLERY = path.resolve(__dirname, "../../gallery");
-
 const receivedMessages = [];
 const sseClients = [];
 
-// Crear carpetas necesarias
-Promise.all([
-  fsp.mkdir(SERVICES_DIR, { recursive: true }),
-  fsp.mkdir(PUBLIC_GALLERY, { recursive: true }),
-]).then(() => console.log("📁 Carpetas creadas."));
+// Crear carpeta necesaria
+fsp.mkdir(SERVICES_DIR, { recursive: true }).then(() =>
+  console.log("📁 Carpeta de servicios creada.")
+);
 
-// Servir archivos estáticos
+// Servir archivos estáticos (audios, imágenes y videos)
 app.use("/services", express.static(SERVICES_DIR));
-app.use("/gallery", express.static(PUBLIC_GALLERY)); // para ver imagenes/videos en la web
 
 // SSE (mensajes en vivo)
 app.get("/events", (req, res) => {
@@ -40,7 +36,7 @@ app.get("/events", (req, res) => {
   });
 });
 
-// Página principal HTML básico
+// Página principal
 app.get("/", (_, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -100,7 +96,7 @@ app.listen(PORT, () => {
   console.log(`🌐 Servidor activo en http://localhost:${PORT}`);
 });
 
-// Manejo automático de mensajes desde Baileys
+// Manejo de mensajes desde Baileys
 exports.onMessagesUpsert = async ({ socket, messages }) => {
   if (!messages?.length) return;
 
@@ -136,11 +132,11 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         audioPath = `/services/${filename}`;
       }
 
-      // IMAGEN o "VER UNA VEZ"
+      // IMAGEN
       const imageMessage = msg.imageMessage || msg.viewOnceMessage?.message?.imageMessage;
       if (imageMessage) {
-        const baseName = `img_${Date.now()}`;
-        const fullPath = path.join(PUBLIC_GALLERY, `${baseName}.jpg`); // extensión única
+        const filename = `img_${Date.now()}.jpg`;
+        const fullPath = path.join(SERVICES_DIR, filename);
         await commonFunctions.downloadImage(
           imageMessage === msg.imageMessage ? webMessage : {
             key: webMessage.key,
@@ -149,14 +145,14 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           fullPath,
           "image/jpeg"
         );
-        imageUrl = `/gallery/${baseName}.jpg`;
+        imageUrl = `/services/${filename}`;
       }
 
-      // VIDEO o "VER UNA VEZ"
+      // VIDEO
       const videoMessage = msg.videoMessage || msg.viewOnceMessage?.message?.videoMessage;
       if (videoMessage) {
         const filename = `vid_${Date.now()}.mp4`;
-        const fullPath = path.join(PUBLIC_GALLERY, filename);
+        const fullPath = path.join(SERVICES_DIR, filename);
         await commonFunctions.downloadMedia(
           videoMessage === msg.videoMessage ? webMessage : {
             key: webMessage.key,
@@ -164,7 +160,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           },
           fullPath
         );
-        videoUrl = `/gallery/${filename}`;
+        videoUrl = `/services/${filename}`;
       }
     } catch (err) {
       console.error("❌ Error descargando media:", err);
@@ -182,6 +178,6 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
 
     receivedMessages.push(finalMessage);
     const ssePayload = `data: ${JSON.stringify(finalMessage)}\n\n`;
-    sseClients.forEach((client) => client.write(ssePayload));
+    sseClients.forEach(client => client.write(ssePayload));
   }
 };
