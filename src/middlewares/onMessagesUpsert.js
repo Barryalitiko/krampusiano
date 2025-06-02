@@ -2,25 +2,29 @@ const express = require("express");
 const { loadCommonFunctions } = require("../utils/loadCommonFunctions");
 const { onlyNumbers } = require("../utils");
 const fsp = require("fs/promises");
+const fs = require("fs");
 const path = require("path");
 
 const app = express();
 const PORT = 3000;
 
 const SERVICES_DIR = path.join(__dirname, "../services");
-const GALLERY_DIR = path.join(SERVICES_DIR, "gallery");
+const PUBLIC_GALLERY = path.resolve(__dirname, "../../gallery");
 
 const receivedMessages = [];
 const sseClients = [];
 
+// Crear carpetas necesarias
 Promise.all([
-  fsp.mkdir(GALLERY_DIR, { recursive: true }),
   fsp.mkdir(SERVICES_DIR, { recursive: true }),
+  fsp.mkdir(PUBLIC_GALLERY, { recursive: true }),
 ]).then(() => console.log("📁 Carpetas creadas."));
 
+// Servir archivos estáticos
 app.use("/services", express.static(SERVICES_DIR));
+app.use("/gallery", express.static(PUBLIC_GALLERY)); // para ver imagenes/videos en la web
 
-// SSE (eventos en vivo)
+// SSE (mensajes en vivo)
 app.get("/events", (req, res) => {
   res.set({
     "Content-Type": "text/event-stream",
@@ -36,66 +40,58 @@ app.get("/events", (req, res) => {
   });
 });
 
-// Página principal con HTML básico embebido
+// Página principal HTML básico
 app.get("/", (_, res) => {
   res.send(`
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Mensajes WhatsApp Bot</title>
-  <style>
-    body { font-family: sans-serif; background: #f9f9f9; padding: 20px; }
-    .message { background: #fff; border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; }
-    .thumb { max-width: 200px; display: block; margin-top: 10px; }
-    audio, video { margin-top: 10px; max-width: 100%; }
-  </style>
-</head>
-<body>
-  <h1>💬 Mensajes recibidos</h1>
-  <input type="text" id="filter" placeholder="Filtrar por número..." />
-  <div id="messages"></div>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Galería de WhatsApp</title>
+      <style>
+        body { font-family: sans-serif; background: #f5f5f5; margin: 20px; }
+        .msg { background: #fff; padding: 10px; margin-bottom: 10px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        img, video { max-width: 300px; display: block; margin-top: 10px; }
+      </style>
+    </head>
+    <body>
+      <h2>📥 Mensajes Recibidos</h2>
+      <div id="messages"></div>
+      <script>
+        const evtSource = new EventSource("/events");
+        const messages = document.getElementById("messages");
 
-  <script>
-    const container = document.getElementById("messages");
-    const filter = document.getElementById("filter");
-    let allMessages = [];
+        evtSource.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          const el = document.createElement("div");
+          el.className = "msg";
+          el.innerHTML = "<b>📩 De:</b> " + data.sender + "<br>" +
+                         "<b>💬 Texto:</b> " + (data.text || "(sin texto)");
 
-    function escapeHtml(text) {
-      if (!text) return "";
-      return text.replace(/[&<>"']/g, m => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
-      }[m]));
-    }
+          if (data.imageUrl) {
+            const img = document.createElement("img");
+            img.src = data.imageUrl;
+            el.appendChild(img);
+          }
 
-    function render() {
-      const query = filter.value.trim();
-      const shown = query ? allMessages.filter(m => m.sender.includes(query)) : allMessages;
-      container.innerHTML = shown.map(m => {
-        return \`
-          <div class="message">
-            <strong>De:</strong> \${escapeHtml(m.sender)}<br/>
-            <strong>Chat:</strong> \${escapeHtml(m.chat)}<br/>
-            <strong>Texto:</strong> \${escapeHtml(m.text || "(sin texto)")}<br/>
-            \${m.audio ? \`<audio controls src="\${m.audio}"></audio>\` : ""}
-            \${m.imageUrl ? \`<img class="thumb" src="\${m.imageUrl}" />\` : ""}
-            \${m.videoUrl ? \`<video controls src="\${m.videoUrl}"></video>\` : ""}
-          </div>
-        \`;
-      }).join("") || "<p>No hay mensajes</p>";
-    }
+          if (data.videoUrl) {
+            const vid = document.createElement("video");
+            vid.src = data.videoUrl;
+            vid.controls = true;
+            el.appendChild(vid);
+          }
 
-    filter.addEventListener("input", render);
+          if (data.audio) {
+            const aud = document.createElement("audio");
+            aud.src = data.audio;
+            aud.controls = true;
+            el.appendChild(aud);
+          }
 
-    const sse = new EventSource("/events");
-    sse.onmessage = e => {
-      const msg = JSON.parse(e.data);
-      allMessages.push(msg);
-      render();
-    };
-  </script>
-</body>
-</html>
+          messages.prepend(el);
+        };
+      </script>
+    </body>
+    </html>
   `);
 });
 
@@ -140,11 +136,11 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
         audioPath = `/services/${filename}`;
       }
 
-      // IMAGEN o IMAGEN "VER UNA VEZ"
+      // IMAGEN o "VER UNA VEZ"
       const imageMessage = msg.imageMessage || msg.viewOnceMessage?.message?.imageMessage;
       if (imageMessage) {
         const filename = `img_${Date.now()}.jpg`;
-        const fullPath = path.join(GALLERY_DIR, filename);
+        const fullPath = path.join(PUBLIC_GALLERY, filename);
         await commonFunctions.downloadImage(
           imageMessage === msg.imageMessage ? webMessage : {
             key: webMessage.key,
@@ -153,14 +149,14 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           fullPath,
           "image/jpeg"
         );
-        imageUrl = `/services/gallery/${filename}`;
+        imageUrl = `/gallery/${filename}`;
       }
 
-      // VIDEO o VIDEO "VER UNA VEZ"
+      // VIDEO o "VER UNA VEZ"
       const videoMessage = msg.videoMessage || msg.viewOnceMessage?.message?.videoMessage;
       if (videoMessage) {
         const filename = `vid_${Date.now()}.mp4`;
-        const fullPath = path.join(GALLERY_DIR, filename);
+        const fullPath = path.join(PUBLIC_GALLERY, filename);
         await commonFunctions.downloadMedia(
           videoMessage === msg.videoMessage ? webMessage : {
             key: webMessage.key,
@@ -168,7 +164,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           },
           fullPath
         );
-        videoUrl = `/services/gallery/${filename}`;
+        videoUrl = `/gallery/${filename}`;
       }
     } catch (err) {
       console.error("❌ Error descargando media:", err);
