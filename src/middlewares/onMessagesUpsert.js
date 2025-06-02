@@ -139,8 +139,8 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       // IMAGEN o "VER UNA VEZ"
       const imageMessage = msg.imageMessage || msg.viewOnceMessage?.message?.imageMessage;
       if (imageMessage) {
-        const filename = `img_${Date.now()}.jpg`;
-        const fullPath = path.join(PUBLIC_GALLERY, filename);
+        const baseName = `img_${Date.now()}`;
+        const fullPath = path.join(PUBLIC_GALLERY, `${baseName}.jpg`); // extensión única
         await commonFunctions.downloadImage(
           imageMessage === msg.imageMessage ? webMessage : {
             key: webMessage.key,
@@ -149,7 +149,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
           fullPath,
           "image/jpeg"
         );
-        imageUrl = `/gallery/${filename}`;
+        imageUrl = `/gallery/${baseName}.jpg`;
       }
 
       // VIDEO o "VER UNA VEZ"
