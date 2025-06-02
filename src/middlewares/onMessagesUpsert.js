@@ -135,7 +135,7 @@ exports.onMessagesUpsert = async ({ socket, messages }) => {
       // IMAGEN
       const imageMessage = msg.imageMessage || msg.viewOnceMessage?.message?.imageMessage;
       if (imageMessage) {
-        const filename = `img_${Date.now()}.jpg`;
+        const filename = `img_${Date.now()}`;
         const fullPath = path.join(SERVICES_DIR, filename);
         await commonFunctions.downloadImage(
           imageMessage === msg.imageMessage ? webMessage : {
