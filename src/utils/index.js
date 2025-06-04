@@ -124,7 +124,7 @@ exports.download = async (webMessage, fileName, context) => {
     buffer = Buffer.concat([buffer, chunk]);
   }
 
-  const extension = content.mimetype.split('/')[1]; // Detectar formato real: jpeg, png, webp, mp4, etc.
+  const extension = content.mimetype.split('/')[1]; // ejemplo: 'jpeg'
   const filePath = path.resolve(TEMP_DIR, `${fileName}.${extension}`);
   await writeFile(filePath, buffer);
 
