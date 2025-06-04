@@ -113,12 +113,9 @@ exports.getContent = (webMessage, context) => {
   );
 };
 
-exports.download = async (webMessage, fileName, context, extension) => {
+exports.download = async (webMessage, fileName, context) => {
   const content = exports.getContent(webMessage, context);
-
-  if (!content) {
-    return null;
-  }
+  if (!content || !content.mimetype) return null;
 
   const stream = await downloadContentFromMessage(content, context);
   let buffer = Buffer.from([]);
@@ -127,12 +124,12 @@ exports.download = async (webMessage, fileName, context, extension) => {
     buffer = Buffer.concat([buffer, chunk]);
   }
 
+  const extension = content.mimetype.split('/')[1]; // Detectar formato real: jpeg, png, webp, mp4, etc.
   const filePath = path.resolve(TEMP_DIR, `${fileName}.${extension}`);
   await writeFile(filePath, buffer);
 
   return filePath;
 };
-
 exports.findCommandImport = (commandName) => {
   const command = exports.readCommandImports();
 
