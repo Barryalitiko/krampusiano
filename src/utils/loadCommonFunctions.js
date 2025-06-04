@@ -28,10 +28,8 @@ exports.loadCommonFunctions = ({ socket, webMessage }) => {
 
   // Funciones para descargar los archivos según el tipo
   const downloadImage = async (webMessage, fileName) => {
-  const mimeType = webMessage.message.imageMessage.mimetype;
-  const extension = mimeType.split('/')[1];
-  return await download(webMessage, fileName, "image", extension);
-};
+  return await download(webMessage, fileName, 'image'); // sin extensión
+}; 
 
   const downloadSticker = async (webMessage, fileName) => {
     return await download(webMessage, fileName, "sticker", "webp");
